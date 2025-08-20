@@ -1,15 +1,18 @@
 <?php include 'includes/header.php'; ?>
+
 <div class="container my-4">
     <h2 class="mb-4">📚 Danh sách tài liệu</h2>
 
     <?php
     include 'includes/db.php';
+
+    // Lấy danh sách tài liệu đã được duyệt (status_id = 2)
     $docs = $pdo->query("
         SELECT documents.*, users.username 
         FROM documents 
-        JOIN users ON documents.user_id = users.user_id 
-        WHERE status='approved' 
-        ORDER BY created_at DESC
+        JOIN users ON documents.user_id = users.user_id
+        WHERE status_id = 2
+        ORDER BY upload_date DESC
     ")->fetchAll();
     ?>
 
@@ -22,7 +25,7 @@
                     <div class="card h-100 shadow-sm">
                         <div class="card-body d-flex flex-column">
                             <h5 class="card-title"><?= htmlspecialchars($doc['title']) ?></h5>
-                            <p class="card-text"><strong>Môn học:</strong> <?= htmlspecialchars($doc['subject']) ?></p>
+                            <p class="card-text"><strong>Môn học:</strong> <?= htmlspecialchars($doc['subject_id']) ?></p>
                             <p class="card-text"><strong>Người đăng:</strong> <?= htmlspecialchars($doc['username']) ?></p>
 
                             <?php if (!empty($doc['description'])): ?>
@@ -36,7 +39,7 @@
                             </a>
                         </div>
                         <div class="card-footer text-muted small">
-                            Đăng ngày: <?= date("d/m/Y H:i", strtotime($doc['created_at'])) ?>
+                            Đăng ngày: <?= date("d/m/Y H:i", strtotime($doc['upload_date'])) ?>
                         </div>
                     </div>
                 </div>
@@ -44,4 +47,5 @@
         </div>
     <?php endif; ?>
 </div>
+
 <?php include 'includes/footer.php'; ?>

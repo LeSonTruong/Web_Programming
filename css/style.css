@@ -1,13 +1,24 @@
 /* body và main */
+html,
 body {
+    height: 100%;
+    /* đảm bảo flex hoạt động */
+    margin: 0;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
     font-family: Arial, sans-serif;
     background: #f5f5f5;
 }
 
+/* Main chiếm không gian còn lại */
 main {
+    flex: 1 0 auto;
+    /* co giãn theo chiều dọc */
     padding: 20px;
     max-width: 1200px;
-    /* rộng hơn để khớp layout Bootstrap */
     margin: auto;
 }
 
@@ -31,13 +42,16 @@ header a:hover {
     text-decoration: underline;
 }
 
-/* Footer */
+/* Footer cố định dưới */
 footer {
+    flex-shrink: 0;
+    /* không bị co lại */
     text-align: center;
     padding: 15px;
     background: #333;
     color: white;
-    margin-top: 40px;
+    margin-top: 0;
+    /* loại bỏ margin-top cũ */
 }
 
 /* Form */

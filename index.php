@@ -26,14 +26,26 @@
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mt-2">
             <?php
             include 'includes/db.php';
-            $docs = $pdo->query("SELECT * FROM documents WHERE status='approved' ORDER BY created_at DESC LIMIT 5")->fetchAll();
+
+            // Lấy 5 tài liệu mới nhất đã được duyệt
+            $stmt = $pdo->query("
+                SELECT d.*, s.subject_name
+                FROM documents d
+                JOIN document_status ds ON d.status_id = ds.status_id
+                JOIN subjects s ON d.subject_id = s.subject_id
+                WHERE ds.status_name = 'approved'
+                ORDER BY d.upload_date DESC
+                LIMIT 5
+            ");
+            $docs = $stmt->fetchAll();
+
             foreach ($docs as $doc):
             ?>
                 <div class="col">
                     <div class="card h-100 shadow-sm">
                         <div class="card-body">
                             <h5 class="card-title"><?= htmlspecialchars($doc['title']) ?></h5>
-                            <p class="card-text"><strong>Môn học:</strong> <?= htmlspecialchars($doc['subject']) ?></p>
+                            <p class="card-text"><strong>Môn học:</strong> <?= htmlspecialchars($doc['subject_name']) ?></p>
                         </div>
                         <div class="card-footer bg-transparent border-top-0">
                             <a href="<?= htmlspecialchars($doc['file_path']) ?>" target="_blank" class="btn btn-success w-100">Tải xuống</a>
