@@ -1,57 +1,57 @@
+/* =======================
+   CSS Tổng thể + Light/Dark Mode
+======================= */
+
 /* body và main */
 html,
 body {
     height: 100%;
-    /* đảm bảo flex hoạt động */
     margin: 0;
-}
-
-body {
     display: flex;
     flex-direction: column;
     font-family: Arial, sans-serif;
     background: #f5f5f5;
+    color: #212529;
+    transition: background 0.3s, color 0.3s;
 }
 
 /* Main chiếm không gian còn lại */
 main {
     flex: 1 0 auto;
-    /* co giãn theo chiều dọc */
     padding: 20px;
     max-width: 1200px;
     margin: auto;
 }
 
 /* Header */
-header {
+header,
+.navbar {
     background: #007bff;
     color: white;
-    padding: 15px 30px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    transition: background 0.3s, color 0.3s;
 }
 
-header a {
+header a,
+.navbar a {
     color: white;
     text-decoration: none;
     margin: 0 10px;
 }
 
-header a:hover {
+header a:hover,
+.navbar a:hover {
     text-decoration: underline;
 }
 
 /* Footer cố định dưới */
 footer {
     flex-shrink: 0;
-    /* không bị co lại */
     text-align: center;
     padding: 15px;
     background: #333;
     color: white;
     margin-top: 0;
-    /* loại bỏ margin-top cũ */
+    transition: background 0.3s, color 0.3s;
 }
 
 /* Form */
@@ -65,6 +65,8 @@ form button {
     margin-bottom: 10px;
     padding: 10px;
     border-radius: 5px;
+    border: 1px solid #ccc;
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
 }
 
 button {
@@ -80,12 +82,14 @@ button:hover {
 }
 
 /* Document card tùy chỉnh */
-.document-card {
+.document-card,
+.card {
     background: white;
     padding: 15px;
     margin-bottom: 15px;
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
 }
 
 /* Responsive header */
@@ -99,4 +103,50 @@ button:hover {
         display: block;
         margin: 5px 0;
     }
+}
+
+/* =======================
+   Dark Mode
+======================= */
+
+body.dark-mode {
+    background: #121212;
+    color: #e0e0e0;
+}
+
+.navbar.dark-mode,
+header.dark-mode {
+    background: #1f1f1f !important;
+    color: #e0e0e0;
+}
+
+footer.dark-mode {
+    background: #1f1f1f;
+    color: #e0e0e0;
+}
+
+.card.dark-mode,
+.document-card.dark-mode {
+    background: #1f1f1f;
+    color: #e0e0e0;
+    border: 1px solid #333;
+}
+
+form input.dark-mode,
+form textarea.dark-mode,
+form select.dark-mode,
+form button.dark-mode {
+    background: #2c2c2c;
+    color: #e0e0e0;
+    border: 1px solid #444;
+}
+
+button.dark-mode {
+    background: #333;
+    color: #fff;
+    border: 1px solid #444;
+}
+
+button.dark-mode:hover {
+    background: #555;
 }

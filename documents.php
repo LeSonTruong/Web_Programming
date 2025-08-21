@@ -7,7 +7,7 @@
     include 'includes/db.php';
 
     // Lấy danh sách tài liệu đã được duyệt (status_id = 2)
-    $docs = $pdo->query("
+    $docs = $conn->query("
         SELECT documents.*, users.username 
         FROM documents 
         JOIN users ON documents.user_id = users.user_id

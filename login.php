@@ -1,4 +1,5 @@
 <?php
+include 'includes/header.php';
 include 'includes/db.php';
 $error = '';
 
@@ -6,7 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $login = trim($_POST['login']); // có thể là email hoặc username
     $password = $_POST['password'];
 
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE email=? OR username=? LIMIT 1");
+    $stmt = $conn->prepare("SELECT * FROM users WHERE email=? OR username=? LIMIT 1");
     $stmt->execute([$login, $login]);
     $user = $stmt->fetch();
 
@@ -14,6 +15,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $_SESSION['user_id'] = $user['user_id'];
         $_SESSION['fullname'] = $user['fullname'];
         $_SESSION['username'] = $user['username'];
+        $_SESSION['display_name'] = $user['display_name'] ?? $user['username']; // <--- thêm dòng này
+        $_SESSION['avatar'] = $user['avatar'] ?? 'default.png'; // <--- thêm avatar cho header
         $_SESSION['role'] = $user['role'];
 
         header("Location: index.php");
@@ -23,7 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
-include 'includes/header.php';
 ?>
 
 <div class="d-flex justify-content-center align-items-center" style="min-height:70vh;">

@@ -7,7 +7,7 @@
     include 'includes/db.php';
 
     // Lấy danh sách download, join documents và users
-    $stmt = $pdo->query("
+    $stmt = $conn->query("
         SELECT dl.download_id, dl.download_time, u.fullname, u.username, d.title, d.file_path
         FROM downloads dl
         JOIN users u ON dl.user_id = u.user_id

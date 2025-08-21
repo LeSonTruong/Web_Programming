@@ -1,9 +1,17 @@
-<?php include 'includes/header.php'; ?>
+<?php
+include 'includes/header.php';
+?>
 
 <div class="container my-5">
     <!-- Phần chào mừng -->
     <div class="text-center mb-5">
-        <h2 class="display-5">Chào mừng đến với StudyShare</h2>
+        <h2 class="display-5">
+            <?php if (isset($_SESSION['fullname'])): ?>
+                👋 Xin chào, <?= htmlspecialchars($_SESSION['fullname']) ?>!
+            <?php else: ?>
+                Chào mừng đến với StudyShare
+            <?php endif; ?>
+        </h2>
         <p class="lead">Nơi bạn có thể tải lên và chia sẻ tài liệu học tập theo môn học hoặc ngành học.</p>
     </div>
 
@@ -27,8 +35,7 @@
             <?php
             include 'includes/db.php';
 
-            // Lấy 5 tài liệu mới nhất đã được duyệt
-            $stmt = $pdo->query("
+            $stmt = $conn->query("
                 SELECT d.*, s.subject_name
                 FROM documents d
                 JOIN document_status ds ON d.status_id = ds.status_id

@@ -1,4 +1,5 @@
 <?php
+include 'includes/header.php';
 include 'includes/db.php';
 $error = '';
 
@@ -6,19 +7,37 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $fullname = trim($_POST['fullname']);
     $username = trim($_POST['username']);
     $email = trim($_POST['email']);
-    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+    $password_raw = trim($_POST['password']);
 
-    $stmt = $pdo->prepare("INSERT INTO users (fullname, username, email, password, role, created_at) 
-                           VALUES (?, ?, ?, ?, 'user', NOW())");
-    if ($stmt->execute([$fullname, $username, $email, $password])) {
-        header("Location: login.php");
-        exit();
+    // ✅ 1. Kiểm tra dữ liệu rỗng
+    if (empty($fullname) || empty($username) || empty($email) || empty($password_raw)) {
+        $error = "Vui lòng nhập đầy đủ thông tin!";
+    }
+    // ✅ 2. Kiểm tra định dạng email
+    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = "Địa chỉ email không hợp lệ!";
     } else {
-        $error = "Đăng ký thất bại! Vui lòng thử lại.";
+        // ✅ 3. Kiểm tra username / email đã tồn tại chưa
+        $check = $conn->prepare("SELECT COUNT(*) FROM users WHERE email = ? OR username = ?");
+        $check->execute([$email, $username]);
+        if ($check->fetchColumn() > 0) {
+            $error = "Tên đăng nhập hoặc email đã tồn tại!";
+        } else {
+            // ✅ 4. Hash mật khẩu và insert
+            $password = password_hash($password_raw, PASSWORD_DEFAULT);
+
+            $stmt = $conn->prepare("INSERT INTO users (fullname, username, email, password, role, created_at) 
+                                   VALUES (?, ?, ?, ?, 'user', NOW())");
+            if ($stmt->execute([$fullname, $username, $email, $password])) {
+                header("Location: login.php");
+                exit();
+            } else {
+                $error = "Đăng ký thất bại! Vui lòng thử lại.";
+            }
+        }
     }
 }
 
-include 'includes/header.php';
 ?>
 
 <div class="d-flex justify-content-center align-items-center" style="min-height:70vh;">
@@ -32,17 +51,17 @@ include 'includes/header.php';
         <form method="post">
             <div class="mb-3">
                 <label for="fullname" class="form-label">Họ và tên</label>
-                <input type="text" id="fullname" name="fullname" class="form-control" required>
+                <input type="text" id="fullname" name="fullname" class="form-control" value="<?= htmlspecialchars($fullname ?? '') ?>" required>
             </div>
 
             <div class="mb-3">
                 <label for="username" class="form-label">Tên đăng nhập</label>
-                <input type="text" id="username" name="username" class="form-control" required>
+                <input type="text" id="username" name="username" class="form-control" value="<?= htmlspecialchars($username ?? '') ?>" required>
             </div>
 
             <div class="mb-3">
                 <label for="email" class="form-label">Địa chỉ Email</label>
-                <input type="email" id="email" name="email" class="form-control" required>
+                <input type="email" id="email" name="email" class="form-control" value="<?= htmlspecialchars($email ?? '') ?>" required>
             </div>
 
             <div class="mb-3">

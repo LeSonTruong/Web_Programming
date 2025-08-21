@@ -7,7 +7,7 @@
     include 'includes/db.php';
 
     // Lấy tất cả comment, join documents và users
-    $stmt = $pdo->query("
+    $stmt = $conn->query("
         SELECT c.comment_id, c.content, c.created_at, u.fullname, u.username, d.title
         FROM comments c
         JOIN users u ON c.user_id = u.user_id
