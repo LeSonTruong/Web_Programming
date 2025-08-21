@@ -1,10 +1,17 @@
 <?php
-include 'includes/header.php';
 include 'includes/db.php';
+session_start();
+
+// Nếu đã đăng nhập, chuyển hướng về trang chủ
+if (isset($_SESSION['user_id'])) {
+    header("Location: index.php");
+    exit();
+}
+
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $login = trim($_POST['login']); // có thể là email hoặc username
+    $login = trim($_POST['login']); // Email hoặc username
     $password = $_POST['password'];
 
     $stmt = $conn->prepare("SELECT * FROM users WHERE email=? OR username=? LIMIT 1");
@@ -15,8 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $_SESSION['user_id'] = $user['user_id'];
         $_SESSION['fullname'] = $user['fullname'];
         $_SESSION['username'] = $user['username'];
-        $_SESSION['display_name'] = $user['display_name'] ?? $user['username']; // <--- thêm dòng này
-        $_SESSION['avatar'] = $user['avatar'] ?? 'default.png'; // <--- thêm avatar cho header
+        $_SESSION['display_name'] = $user['display_name'] ?? $user['username'];
+        $_SESSION['avatar'] = $user['avatar'] ?? 'default.png';
         $_SESSION['role'] = $user['role'];
 
         header("Location: index.php");
@@ -26,6 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
+// Chỉ include header sau khi xử lý redirect
+include 'includes/header.php';
 ?>
 
 <div class="d-flex justify-content-center align-items-center" style="min-height:70vh;">
@@ -44,7 +53,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             <div class="mb-3">
                 <label for="password" class="form-label">Mật khẩu</label>
-                <input type="password" id="password" name="password" class="form-control" required>
+                <div class="input-group">
+                    <input type="password" id="password" name="password" class="form-control" required>
+                    <button type="button" class="btn btn-outline-secondary" id="togglePassword">👁️</button>
+                </div>
             </div>
 
             <button type="submit" class="btn btn-primary w-100">Đăng nhập</button>
@@ -55,5 +67,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </p>
     </div>
 </div>
+
+<script>
+    // Nút con mắt: show/hide password
+    const toggleBtn = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+
+    toggleBtn.addEventListener('click', () => {
+        const type = passwordInput.type === 'password' ? 'text' : 'password';
+        passwordInput.type = type;
+        toggleBtn.textContent = type === 'password' ? '👁️' : '🙈';
+    });
+</script>
 
 <?php include 'includes/footer.php'; ?>

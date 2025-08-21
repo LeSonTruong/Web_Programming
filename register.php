@@ -1,6 +1,13 @@
 <?php
-include 'includes/header.php';
 include 'includes/db.php';
+session_start();
+
+// Nếu đã đăng nhập, chuyển hướng về trang chủ
+if (isset($_SESSION['user_id'])) {
+    header("Location: index.php");
+    exit();
+}
+
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -9,21 +16,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = trim($_POST['email']);
     $password_raw = trim($_POST['password']);
 
-    // ✅ 1. Kiểm tra dữ liệu rỗng
+    // 1. Kiểm tra dữ liệu rỗng
     if (empty($fullname) || empty($username) || empty($email) || empty($password_raw)) {
         $error = "Vui lòng nhập đầy đủ thông tin!";
     }
-    // ✅ 2. Kiểm tra định dạng email
+    // 2. Kiểm tra định dạng email
     elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = "Địa chỉ email không hợp lệ!";
     } else {
-        // ✅ 3. Kiểm tra username / email đã tồn tại chưa
+        // 3. Kiểm tra username / email đã tồn tại chưa
         $check = $conn->prepare("SELECT COUNT(*) FROM users WHERE email = ? OR username = ?");
         $check->execute([$email, $username]);
         if ($check->fetchColumn() > 0) {
             $error = "Tên đăng nhập hoặc email đã tồn tại!";
         } else {
-            // ✅ 4. Hash mật khẩu và insert
+            // 4. Hash mật khẩu và insert
             $password = password_hash($password_raw, PASSWORD_DEFAULT);
 
             $stmt = $conn->prepare("INSERT INTO users (fullname, username, email, password, role, created_at) 
@@ -38,6 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
+// Chỉ include header sau khi xử lý redirect
+include 'includes/header.php';
 ?>
 
 <div class="d-flex justify-content-center align-items-center" style="min-height:70vh;">
@@ -66,7 +75,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             <div class="mb-3">
                 <label for="password" class="form-label">Mật khẩu</label>
-                <input type="password" id="password" name="password" class="form-control" required>
+                <div class="input-group">
+                    <input type="password" id="password" name="password" class="form-control" required>
+                    <button type="button" class="btn btn-outline-secondary" id="togglePassword">👁️</button>
+                </div>
             </div>
 
             <button type="submit" class="btn btn-success w-100">Đăng ký</button>
@@ -77,5 +89,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </p>
     </div>
 </div>
+
+<script>
+    // Nút con mắt: show/hide password
+    const toggleBtn = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+
+    toggleBtn.addEventListener('click', () => {
+        const type = passwordInput.type === 'password' ? 'text' : 'password';
+        passwordInput.type = type;
+        toggleBtn.textContent = type === 'password' ? '👁️' : '🙈';
+    });
+</script>
 
 <?php include 'includes/footer.php'; ?>

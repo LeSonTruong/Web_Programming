@@ -2,6 +2,17 @@
 include 'includes/header.php';
 include 'includes/db.php';
 
+// ====== KIỂM TRA ĐĂNG NHẬP ======
+if (!isset($_SESSION['user_id'])) {
+    echo '<div class="container my-5">
+            <div class="alert alert-warning text-center">
+                ⚠️ Tạo tài khoản hoặc đăng nhập đi bạn ÊYYYYY!
+            </div>
+          </div>';
+    include 'includes/footer.php';
+    exit();
+}
+
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit();
@@ -26,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $description = trim($_POST['description']);
     $file = $_FILES['document'];
 
-    // Lấy status_id của pending
+    // Lấy status_id của 'pending'
     $stmt = $conn->prepare("SELECT status_id FROM document_status WHERE status_name='pending' LIMIT 1");
     $stmt->execute();
     $status = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -34,11 +45,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     // Gom môn học gần giống
     $subject_id = null;
-    $minDistance = 3; // khoảng cách tối đa coi là giống
+    $minDistance = 3;
     foreach ($subjects as $sub) {
         if (levenshtein(strtolower($subject_name), strtolower($sub['subject_name'])) <= $minDistance) {
             $subject_id = $sub['subject_id'];
-            $subject_name = $sub['subject_name']; // dùng tên chuẩn
+            $subject_name = $sub['subject_name'];
             break;
         }
     }
@@ -46,35 +57,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (!$subject_id) {
         // Thêm môn học mới
         $stmt = $conn->prepare("INSERT INTO subjects (subject_name, department) VALUES (?, ?)");
-        $stmt->execute([$subject_name, $department]);
-        $subject_id = $conn->lastInsertId();
-        // cập nhật danh sách subjects mới để gợi ý lần sau
-        $subjects[] = ['subject_id' => $subject_id, 'subject_name' => $subject_name];
+        try {
+            $stmt->execute([$subject_name, $department]);
+            $subject_id = $conn->lastInsertId();
+            $subjects[] = ['subject_id' => $subject_id, 'subject_name' => $subject_name];
+        } catch (PDOException $e) {
+            $error = "❌ Lỗi khi tạo môn học: " . $e->getMessage();
+        }
     }
 
-    // Kiểm tra file
-    $allowed_types = ['pdf', 'doc', 'docx', 'ppt', 'pptx'];
-    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    // Nếu chưa có lỗi, tiếp tục kiểm tra file
+    if (!$error) {
+        $allowed_types = ['pdf', 'doc', 'docx', 'ppt', 'pptx'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
-    if (!in_array($ext, $allowed_types)) {
-        $error = "❌ Chỉ cho phép file PDF, DOC, DOCX, PPT, PPTX.";
-    } elseif ($file['size'] > 20 * 1024 * 1024) {
-        $error = "❌ File quá lớn, tối đa 20MB.";
-    } else {
-        $filename = uniqid() . '.' . $ext;
-        $file_path = 'uploads/' . $filename;
-
-        if (move_uploaded_file($file['tmp_name'], $file_path)) {
-            $summary = generateSummary($description);
-
-            $stmt = $conn->prepare("INSERT INTO documents 
-                (user_id, title, description, subject_id, file_path, summary, status_id, upload_date)
-                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
-            $stmt->execute([$_SESSION['user_id'], $title, $description, $subject_id, $file_path, $summary, $status_id]);
-
-            $success = "✅ Tải lên thành công, chờ admin duyệt.";
+        if (!in_array($ext, $allowed_types)) {
+            $error = "❌ Chỉ cho phép file PDF, DOC, DOCX, PPT, PPTX.";
+        } elseif ($file['size'] > 20 * 1024 * 1024) {
+            $error = "❌ File quá lớn, tối đa 20MB.";
         } else {
-            $error = "❌ Tải lên thất bại!";
+            $filename = uniqid() . '.' . $ext;
+            $file_path = 'uploads/' . $filename;
+
+            if (move_uploaded_file($file['tmp_name'], $file_path)) {
+                $summary = generateSummary($description);
+
+                $stmt = $conn->prepare("INSERT INTO documents 
+                    (user_id, title, description, subject_id, file_path, summary, status_id, upload_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+                try {
+                    $stmt->execute([$_SESSION['user_id'], $title, $description, $subject_id, $file_path, $summary, $status_id]);
+                    $success = "✅ Tải lên thành công, chờ admin duyệt.";
+                } catch (PDOException $e) {
+                    $error = "❌ Lỗi khi lưu tài liệu: " . $e->getMessage();
+                }
+            } else {
+                $error = "❌ Tải lên thất bại!";
+            }
         }
     }
 }

@@ -1,9 +1,9 @@
 <?php
 include 'includes/header.php';
 include 'includes/db.php';
-include 'includes/ai.php'; // Gọi client $openai ở đây
+include 'includes/ai.php'; // Gọi client $openai
 
-// ====== HÀM LOG ======
+// ====== HÀM LOG AI ======
 function logAI($conn, $doc_id, $action, $status, $message = '')
 {
     $stmt = $conn->prepare("INSERT INTO ai_logs (doc_id, action, status, message) VALUES (?, ?, ?, ?)");
@@ -55,27 +55,32 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] != 'admin') {
     exit();
 }
 
-// ====== DUYỆT ======
+// ====== ĐẾM SỐ BÀI ĐANG CHỜ DUYỆT ======
+$pending_count = $conn->query("SELECT COUNT(*) FROM documents WHERE status_id=1")->fetchColumn();
+if ($pending_count > 0) {
+    echo "<div class='alert alert-info'>Hiện có $pending_count tài liệu đang chờ duyệt.</div>";
+}
+
+// ====== DUYỆT TÀI LIỆU ======
 if (isset($_GET['approve'])) {
     $doc_id = (int) $_GET['approve'];
-
     $stmt = $conn->prepare("SELECT * FROM documents WHERE doc_id=?");
     $stmt->execute([$doc_id]);
     $doc = $stmt->fetch();
 
     if ($doc) {
-        if ($doc['status_id'] != 0) {
+        if ($doc['status_id'] != 1) { // chỉ duyệt nếu pending
             echo '<div class="alert alert-info">⚠️ Tài liệu này đã được xử lý trước đó.</div>';
         } else {
-            // Ưu tiên mô tả, fallback sang tiêu đề
             $textContent = $doc['description'] ?: $doc['title'];
             $textContent = mb_substr($textContent, 0, 5000);
 
-            $summary = generateSummary($openai, $conn, $doc_id, $textContent);
-            $embedding = generateEmbedding($openai, $conn, $doc_id, $textContent);
+            $summary = createSummary($textContent);
+            $embedding = createEmbedding($textContent);
 
-            // Cập nhật documents
-            $stmt = $conn->prepare("UPDATE documents SET status_id=1, summary=? WHERE doc_id=?");
+
+            // Cập nhật documents: status_id=2 (approved)
+            $stmt = $conn->prepare("UPDATE documents SET status_id=2, summary=? WHERE doc_id=?");
             $stmt->execute([$summary, $doc_id]);
 
             // Lưu embedding nếu có
@@ -84,17 +89,34 @@ if (isset($_GET['approve'])) {
                 $stmt->execute([$doc_id, json_encode($embedding)]);
             }
 
+            // ====== TẠO THÔNG BÁO CHO USER ======
+            $stmt_notif = $conn->prepare("INSERT INTO notifications (user_id, message) VALUES (?, ?)");
+            $message = "✅ Tài liệu '{$doc['title']}' của bạn đã được duyệt!";
+            $stmt_notif->execute([$doc['user_id'], $message]);
+
             echo '<div class="alert alert-success">✅ Tài liệu đã được duyệt, tóm tắt & embedding đã lưu.</div>';
         }
     }
 }
 
-// ====== TỪ CHỐI ======
+// ====== TỪ CHỐI TÀI LIỆU ======
 if (isset($_GET['reject'])) {
     $doc_id = (int) $_GET['reject'];
-    $stmt = $conn->prepare("UPDATE documents SET status_id=2 WHERE doc_id=?");
+    $stmt = $conn->prepare("SELECT * FROM documents WHERE doc_id=?");
     $stmt->execute([$doc_id]);
-    echo '<div class="alert alert-danger">❌ Tài liệu đã bị từ chối.</div>';
+    $doc = $stmt->fetch();
+
+    if ($doc && $doc['status_id'] == 1) {
+        $stmt = $conn->prepare("UPDATE documents SET status_id=3 WHERE doc_id=?"); // rejected
+        $stmt->execute([$doc_id]);
+
+        // Tạo thông báo cho user
+        $stmt_notif = $conn->prepare("INSERT INTO notifications (user_id, message) VALUES (?, ?)");
+        $message = "❌ Tài liệu '{$doc['title']}' của bạn đã bị từ chối!";
+        $stmt_notif->execute([$doc['user_id'], $message]);
+
+        echo '<div class="alert alert-danger">❌ Tài liệu đã bị từ chối.</div>';
+    }
 }
 
 // ====== DANH SÁCH CHỜ DUYỆT ======
@@ -102,7 +124,7 @@ $docs = $conn->query("
     SELECT documents.*, users.username 
     FROM documents 
     JOIN users ON documents.user_id = users.user_id 
-    WHERE status_id=0 
+    WHERE status_id=1
     ORDER BY upload_date DESC
 ")->fetchAll();
 ?>

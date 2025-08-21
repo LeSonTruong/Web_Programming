@@ -3,23 +3,25 @@
 
 require __DIR__ . '/../vendor/autoload.php';
 
+// Load .env từ gốc project
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . "/..");
 $dotenv->load();
 
-function getOpenAIKey()
+/**
+ * Lấy OpenAI API Key từ .env
+ */
+function getOpenAIKey(): ?string
 {
-    return $_ENV["OPENAI_API_KEY"] ?? null;
+    return $_ENV['OPENAI_API_KEY'] ?? null;
 }
 
 /**
- * Tạo tóm tắt văn bản
+ * Gọi API OpenAI Chat Completions để tạo tóm tắt
  */
-function createSummary($text)
+function createSummary(string $text): string
 {
     $apiKey = getOpenAIKey();
-    if (!$apiKey) {
-        return "⚠️ Missing API Key";
-    }
+    if (!$apiKey) return "⚠️ Missing API Key";
 
     $url = "https://api.openai.com/v1/chat/completions";
 
@@ -32,34 +34,31 @@ function createSummary($text)
         "max_tokens" => 150,
     ];
 
-    $options = [
-        "http" => [
-            "header" => "Content-Type: application/json\r\nAuthorization: Bearer $apiKey\r\n",
-            "method" => "POST",
-            "content" => json_encode($data),
-        ],
-    ];
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Content-Type: application/json",
+        "Authorization: Bearer $apiKey"
+    ]);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    $result = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
 
-    $context = stream_context_create($options);
-    $result = file_get_contents($url, false, $context);
-
-    if ($result === FALSE) {
-        return "";
-    }
+    if (!$result || $httpCode !== 200) return "";
 
     $response = json_decode($result, true);
     return $response['choices'][0]['message']['content'] ?? "";
 }
 
 /**
- * Tạo embedding vector từ văn bản
+ * Gọi API OpenAI Embeddings
  */
-function createEmbedding($text)
+function createEmbedding(string $text): array
 {
     $apiKey = getOpenAIKey();
-    if (!$apiKey) {
-        return [];
-    }
+    if (!$apiKey) return [];
 
     $url = "https://api.openai.com/v1/embeddings";
 
@@ -68,20 +67,19 @@ function createEmbedding($text)
         "input" => $text,
     ];
 
-    $options = [
-        "http" => [
-            "header" => "Content-Type: application/json\r\nAuthorization: Bearer $apiKey\r\n",
-            "method" => "POST",
-            "content" => json_encode($data),
-        ],
-    ];
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Content-Type: application/json",
+        "Authorization: Bearer $apiKey"
+    ]);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    $result = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
 
-    $context = stream_context_create($options);
-    $result = file_get_contents($url, false, $context);
-
-    if ($result === FALSE) {
-        return [];
-    }
+    if (!$result || $httpCode !== 200) return [];
 
     $response = json_decode($result, true);
     return $response['data'][0]['embedding'] ?? [];

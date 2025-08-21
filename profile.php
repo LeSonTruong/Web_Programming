@@ -3,6 +3,17 @@ include 'includes/header.php';
 require_once "includes/db.php";
 require 'includes/send_mail.php';
 
+// ====== KIỂM TRA ĐĂNG NHẬP ======
+if (!isset($_SESSION['user_id'])) {
+    echo '<div class="container my-5">
+            <div class="alert alert-warning text-center">
+                ⚠️ Tạo tài khoản hoặc đăng nhập đi bạn ÊYYYYY!
+            </div>
+          </div>';
+    include 'includes/footer.php';
+    exit();
+}
+
 // Kiểm tra đăng nhập
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");

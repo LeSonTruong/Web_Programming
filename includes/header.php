@@ -88,21 +88,53 @@ if (session_status() === PHP_SESSION_NONE) {
                     <?php if (isset($_SESSION['user_id'])):
                         $display_name = $_SESSION['display_name'] ?? $_SESSION['username'];
                         $avatar = $_SESSION['avatar'] ?? 'default.png';
+
+                        require_once 'includes/db.php';
+                        $notifications_count = 0;
+                        if ($_SESSION['role'] === 'admin') {
+                            $stmt = $conn->query("SELECT COUNT(*) FROM documents WHERE status_id=1");
+                            $notifications_count = $stmt->fetchColumn();
+                        } else {
+                            $stmt = $conn->prepare("SELECT COUNT(*) FROM notifications WHERE user_id=? AND is_read=0");
+                            $stmt->execute([$_SESSION['user_id']]);
+                            $notifications_count = $stmt->fetchColumn();
+                        }
                     ?>
                         <li class="nav-item"><a class="nav-link" href="upload.php">Tải lên</a></li>
                         <?php if ($_SESSION['role'] === 'admin'): ?>
-                            <li class="nav-item"><a class="nav-link" href="approve.php">Duyệt tài liệu</a></li>
+                            <li class="nav-item"><a class="nav-link" href="approve.php">Duyệt tài liệu <?php if ($notifications_count > 0) echo "($notifications_count)"; ?></a></li>
                         <?php endif; ?>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button"
                                 data-bs-toggle="dropdown" aria-expanded="false">
                                 <img src="uploads/avatars/<?= htmlspecialchars($avatar) ?>" alt="Avatar" width="30" height="30" class="rounded-circle me-2">
                                 <?= htmlspecialchars($display_name) ?>
+                                <?php if ($notifications_count > 0): ?>
+                                    <span class="badge bg-danger ms-2"><?= $notifications_count ?></span>
+                                <?php endif; ?>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="profile.php">Quản lý tài khoản</a></li>
+                                <li><a class="dropdown-item" href="my_documents.php">Quản lý tài liệu</a></li>
+
+                                <?php if ($_SESSION['role'] !== 'admin'): ?>
+                                    <li>
+                                        <a class="dropdown-item" href="notifications.php">
+                                            Thông báo <?php if ($notifications_count > 0) echo "($notifications_count)"; ?>
+                                        </a>
+                                    </li>
+                                <?php else: ?>
+                                    <li>
+                                        <a class="dropdown-item text-warning" href="ai_logs.php">📜 AI Logs</a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="downloads.php">📥 Lịch sử tải về</a>
+                                    </li>
+                                <?php endif; ?>
+
                                 <li><a class="dropdown-item" href="logout.php">Đăng xuất</a></li>
                             </ul>
+
                         </li>
                     <?php else: ?>
                         <li class="nav-item"><a class="nav-link" href="login.php">Đăng nhập</a></li>

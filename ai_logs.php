@@ -2,9 +2,24 @@
 include 'includes/header.php';
 include 'includes/db.php';
 
+// ====== KIỂM TRA ĐĂNG NHẬP ======
+if (!isset($_SESSION['user_id'])) {
+    echo '<div class="container my-5">
+            <div class="alert alert-warning text-center">
+                ⚠️ Tạo tài khoản hoặc đăng nhập đi bạn ÊYYYYY!
+            </div>
+          </div>';
+    include 'includes/footer.php';
+    exit();
+}
+
 // ====== KIỂM TRA QUYỀN ADMIN ======
 if (!isset($_SESSION['role']) || $_SESSION['role'] != 'admin') {
-    echo '<div class="alert alert-danger">Bạn không có quyền truy cập trang này!</div>';
+    echo '<div class="container my-5">
+            <div class="alert alert-danger text-center">
+                ❌ Bạn không có quyền truy cập trang này!
+            </div>
+          </div>';
     include 'includes/footer.php';
     exit();
 }
@@ -25,7 +40,7 @@ if (!empty($_GET['action'])) {
 
 if (!empty($_GET['doc_id'])) {
     $filters[] = "ai_logs.doc_id = ?";
-    $params[] = $_GET['doc_id'];
+    $params[] = (int)$_GET['doc_id'];
 }
 
 if (!empty($_GET['q'])) {
@@ -79,7 +94,7 @@ $logs = $stmt->fetchAll();
     </form>
 
     <?php if (!$logs): ?>
-        <div class="alert alert-info">Không tìm thấy log nào.</div>
+        <div class="alert alert-info text-center">Không tìm thấy log nào.</div>
     <?php else: ?>
         <div class="table-responsive">
             <table class="table table-bordered table-striped align-middle">
