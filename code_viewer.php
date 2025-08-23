@@ -1,6 +1,6 @@
 <?php
 // code_viewer.php
-include 'includes/header.php';
+include 'includes/viewer_header.php';
 
 // Lấy file từ query string
 $file = $_GET['file'] ?? '';

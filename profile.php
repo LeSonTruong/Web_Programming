@@ -1,9 +1,8 @@
 <?php
 include 'includes/header.php';
 require_once "includes/db.php";
-require 'includes/send_mail.php';
+require_once 'includes/send_mail.php';
 
-// ====== KIỂM TRA ĐĂNG NHẬP ======
 if (!isset($_SESSION['user_id'])) {
     echo '<div class="container my-5">
             <div class="alert alert-warning text-center">
@@ -14,16 +13,10 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-// Kiểm tra đăng nhập
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit();
-}
-
 $user_id = $_SESSION['user_id'];
 
 // Lấy thông tin user
-$stmt = $conn->prepare("SELECT * FROM users WHERE user_id = ?");
+$stmt = $conn->prepare("SELECT * FROM users WHERE user_id=?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -32,47 +25,89 @@ $_SESSION['avatar'] = $user['avatar'] ?? 'default.png';
 $_SESSION['display_name'] = $user['display_name'] ?? $user['username'];
 
 $error = $success = '';
-$show_verify_link = false;
+$show_email_verify = false;
+$show_phone_verify = false;
 
+// ===== Đổi Display Name =====
 if (isset($_POST['change_display'])) {
     $new_display = trim($_POST['display_name']);
     $last_change = $user['last_display_change'];
-
     if ($last_change && strtotime($last_change) > strtotime('-30 days')) {
         $error = "Bạn chỉ có thể đổi tên hiển thị sau 30 ngày!";
     } else {
-        $stmt = $conn->prepare("UPDATE users SET display_name = ?, last_display_change = NOW() WHERE user_id = ?");
+        $stmt = $conn->prepare("UPDATE users SET display_name=?, last_display_change=NOW() WHERE user_id=?");
         $stmt->execute([$new_display, $user_id]);
         $success = "Tên hiển thị đã được cập nhật!";
-
-        // ✅ Cập nhật session ngay lập tức
         $_SESSION['display_name'] = $new_display;
     }
 }
 
-// 2️⃣ Đổi Email qua OTP
+// ===== Đổi Email + OTP =====
 if (isset($_POST['change_email'])) {
     $new_email = trim($_POST['email']);
     if (!filter_var($new_email, FILTER_VALIDATE_EMAIL)) {
         $error = "Email không hợp lệ!";
     } else {
-        // Sinh OTP
         $otp = rand(100000, 999999);
-        $_SESSION['pending_email'] = $new_email;
-        $_SESSION['email_otp'] = $otp;
-        $_SESSION['otp_expire'] = time() + 600; // 10 phút
+        $expiry = date("Y-m-d H:i:s", time() + 600); // 10 phút
 
-        // Gửi email xác nhận
-        if (sendMail($new_email, "Xác nhận thay đổi email", "Mã OTP của bạn là: <b>$otp</b>")) {
-            $success = "OTP đã được gửi tới $new_email. Vui lòng nhập mã OTP để xác nhận.";
-            $show_verify_link = true;
+        // Cập nhật OTP vào DB
+        $stmt = $conn->prepare("UPDATE users SET email_verification_code=?, email_verified=0, email=? WHERE user_id=?");
+        $stmt->execute([$otp, $new_email, $user_id]);
+
+        if (function_exists('send_mail') && send_mail($new_email, "Xác nhận email", "Mã OTP của bạn là: <b>$otp</b>")) {
+            $success = "OTP đã được gửi tới $new_email. Nhập OTP để xác nhận.";
+            $show_email_verify = true;
         } else {
             $error = "Không thể gửi email. Vui lòng thử lại.";
         }
     }
 }
 
-// 3️⃣ Đổi mật khẩu
+// ===== Xác thực Email =====
+if (isset($_POST['verify_email_otp'])) {
+    $input_otp = trim($_POST['email_otp']);
+    if ($input_otp == $user['email_verification_code']) {
+        $stmt = $conn->prepare("UPDATE users SET email_verified=1, email_verification_code=NULL WHERE user_id=?");
+        $stmt->execute([$user_id]);
+        $success = "Email đã được xác thực!";
+    } else {
+        $error = "OTP không đúng hoặc đã hết hạn!";
+        $show_email_verify = true;
+    }
+}
+
+// ===== Đổi Số điện thoại + OTP =====
+if (isset($_POST['send_phone_otp'])) {
+    $phone = trim($_POST['phone']);
+    if (!preg_match('/^\+?\d{9,15}$/', $phone)) {
+        $error = "Số điện thoại không hợp lệ!";
+    } else {
+        $otp = rand(100000, 999999);
+        $expiry = date("Y-m-d H:i:s", time() + 600);
+
+        $stmt = $conn->prepare("UPDATE users SET phone=?, otp_code=?, otp_expiry=? WHERE user_id=?");
+        $stmt->execute([$phone, $otp, $expiry, $user_id]);
+
+        $success = "OTP đã được gửi tới số điện thoại $phone";
+        $show_phone_verify = true;
+    }
+}
+
+// ===== Xác thực OTP Số điện thoại =====
+if (isset($_POST['verify_phone_otp'])) {
+    $input_otp = trim($_POST['phone_otp']);
+    if ($input_otp == $user['otp_code'] && strtotime($user['otp_expiry']) > time()) {
+        $stmt = $conn->prepare("UPDATE users SET otp_code=NULL, otp_expiry=NULL WHERE user_id=?");
+        $stmt->execute([$user_id]);
+        $success = "Số điện thoại đã được xác thực!";
+    } else {
+        $error = "OTP không đúng hoặc đã hết hạn!";
+        $show_phone_verify = true;
+    }
+}
+
+// ===== Đổi Mật khẩu =====
 if (isset($_POST['change_password'])) {
     $current = $_POST['current_password'];
     $new = $_POST['new_password'];
@@ -84,34 +119,33 @@ if (isset($_POST['change_password'])) {
         $error = "Mật khẩu mới không khớp!";
     } else {
         $hashed = password_hash($new, PASSWORD_DEFAULT);
-        $stmt = $conn->prepare("UPDATE users SET password = ? WHERE user_id = ?");
+        $stmt = $conn->prepare("UPDATE users SET password=? WHERE user_id=?");
         $stmt->execute([$hashed, $user_id]);
         $success = "Mật khẩu đã được thay đổi!";
     }
 }
 
-// 4️⃣ Đổi Avatar
+// ===== Đổi Avatar =====
 if (isset($_POST['change_avatar']) && isset($_FILES['avatar'])) {
     $file = $_FILES['avatar'];
     $allowed = ['jpg', 'jpeg', 'png', 'gif'];
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-
     if ($file['error'] === 0 && in_array($ext, $allowed)) {
         $newName = "avatar_" . $user_id . "." . $ext;
         $path = "uploads/avatars/" . $newName;
         move_uploaded_file($file['tmp_name'], $path);
 
-        $stmt = $conn->prepare("UPDATE users SET avatar = ? WHERE user_id = ?");
+        $stmt = $conn->prepare("UPDATE users SET avatar=? WHERE user_id=?");
         $stmt->execute([$newName, $user_id]);
         $success = "Ảnh đại diện đã được cập nhật!";
-        $_SESSION['avatar'] = $newName; // Cập nhật ngay cho header
+        $_SESSION['avatar'] = $newName;
     } else {
         $error = "File không hợp lệ!";
     }
 }
 
-// Lấy lại dữ liệu sau cập nhật
-$stmt = $conn->prepare("SELECT * FROM users WHERE user_id = ?");
+// Lấy lại dữ liệu user sau cập nhật
+$stmt = $conn->prepare("SELECT * FROM users WHERE user_id=?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 ?>
@@ -123,9 +157,6 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
         <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
     <?php elseif ($success): ?>
         <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
-        <?php if ($show_verify_link): ?>
-            <a href="verify_email.php" class="btn btn-warning mt-2">Nhập OTP tại đây</a>
-        <?php endif; ?>
     <?php endif; ?>
 
     <!-- Avatar -->
@@ -151,14 +182,50 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
     <!-- Email -->
     <div class="card p-3 mb-3">
         <h4>Email</h4>
+        <p><strong>Email:</strong> <?= htmlspecialchars($user['email']) ?>
+            <?php if ($user['email_verified']): ?>
+                <span class="badge bg-success">Đã xác thực</span>
+            <?php else: ?>
+                <span class="badge bg-warning">Chưa xác thực</span>
+            <?php endif; ?>
+        </p>
         <form method="POST">
-            <input type="email" name="email" class="form-control mb-2"
-                value="<?= htmlspecialchars($user['email']) ?>" required>
+            <input type="email" name="email" class="form-control mb-2" value="<?= htmlspecialchars($user['email']) ?>" required>
             <button type="submit" name="change_email" class="btn btn-primary">Gửi OTP xác nhận Email</button>
         </form>
+
+        <?php if ($show_email_verify): ?>
+            <form method="POST" class="mt-2">
+                <input type="text" name="email_otp" class="form-control mb-2" placeholder="Nhập OTP" required>
+                <button type="submit" name="verify_email_otp" class="btn btn-success">Xác thực Email</button>
+            </form>
+        <?php endif; ?>
     </div>
 
-    <!-- Mật khẩu -->
+    <!-- Phone -->
+    <div class="card p-3 mb-3">
+        <h4>Số điện thoại</h4>
+        <p><strong>Số điện thoại:</strong> <?= htmlspecialchars($user['phone'] ?: 'Chưa cập nhật') ?>
+            <?php if (!empty($user['phone']) && empty($user['otp_code'])): ?>
+                <span class="badge bg-success">Đã xác thực</span>
+            <?php elseif (!empty($user['phone'])): ?>
+                <span class="badge bg-warning">Chưa xác thực</span>
+            <?php endif; ?>
+        </p>
+        <form method="POST">
+            <input type="text" name="phone" class="form-control mb-2" placeholder="Nhập số điện thoại" value="<?= htmlspecialchars($user['phone'] ?? '') ?>" required>
+            <button type="submit" name="send_phone_otp" class="btn btn-primary mb-2">Gửi OTP</button>
+        </form>
+
+        <?php if ($show_phone_verify || !empty($user['otp_code'])): ?>
+            <form method="POST">
+                <input type="text" name="phone_otp" class="form-control mb-2" placeholder="Nhập OTP" required>
+                <button type="submit" name="verify_phone_otp" class="btn btn-success">Xác thực OTP</button>
+            </form>
+        <?php endif; ?>
+    </div>
+
+    <!-- Password -->
     <div class="card p-3 mb-3">
         <h4>Đổi mật khẩu</h4>
         <form method="POST">

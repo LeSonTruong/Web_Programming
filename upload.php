@@ -20,8 +20,12 @@ function generateSummary($text)
     return strlen($text) > 200 ? mb_substr($text, 0, 200) . "..." : $text;
 }
 
+
 // Lấy danh sách môn học
 $subjects = $conn->query("SELECT * FROM subjects ORDER BY subject_name")->fetchAll(PDO::FETCH_ASSOC);
+
+// Lấy danh sách tags
+$tags = $conn->query("SELECT tag_name FROM tags ORDER BY tag_name")->fetchAll(PDO::FETCH_COLUMN);
 
 $error = $success = '';
 
@@ -200,10 +204,110 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <textarea name="description" class="form-control" rows="3"></textarea>
                 </div>
 
+
+
                 <div class="mb-3">
-                    <label class="form-label">🏷️ Tags (ngăn cách bởi dấu phẩy)</label>
-                    <input type="text" name="tags" class="form-control">
+                    <label class="form-label">🏷️ Tags (chọn nhiều, nhấn Enter hoặc dấu phẩy để thêm)</label>
+                    <div id="tags-container" class="d-flex flex-wrap gap-1 mb-2"></div>
+                    <input type="text" id="tags-input" class="form-control" autocomplete="off" placeholder="Nhập tag...">
+                    <div id="tags-suggestions" class="list-group position-absolute w-100" style="z-index:10; display:none;"></div>
+                    <input type="hidden" name="tags" id="tags-hidden">
                 </div>
+                <script>
+                    const allTags = <?php echo json_encode($tags); ?>;
+                    const tagsInput = document.getElementById('tags-input');
+                    const tagsContainer = document.getElementById('tags-container');
+                    const tagsHidden = document.getElementById('tags-hidden');
+                    const tagsSuggestions = document.getElementById('tags-suggestions');
+                    let selectedTags = [];
+
+                    function updateTagsUI() {
+                        tagsContainer.innerHTML = '';
+                        selectedTags.forEach(tag => {
+                            const tagEl = document.createElement('span');
+                            tagEl.className = 'badge bg-primary text-light px-2 py-1 mb-1';
+                            tagEl.textContent = '#' + tag;
+                            const removeBtn = document.createElement('button');
+                            removeBtn.type = 'button';
+                            removeBtn.className = 'btn-close btn-close-white btn-sm ms-1';
+                            removeBtn.style.fontSize = '0.7em';
+                            removeBtn.onclick = () => {
+                                selectedTags = selectedTags.filter(t => t !== tag);
+                                updateTagsUI();
+                            };
+                            tagEl.appendChild(removeBtn);
+                            tagsContainer.appendChild(tagEl);
+                        });
+                        tagsHidden.value = selectedTags.join(',');
+                    }
+
+                    function showSuggestions(val) {
+                        tagsSuggestions.innerHTML = '';
+                        if (!val) {
+                            tagsSuggestions.style.display = 'none';
+                            return;
+                        }
+                        const filtered = allTags.filter(tag => tag.toLowerCase().includes(val.toLowerCase()) && !selectedTags.includes(tag));
+                        if (filtered.length === 0) {
+                            tagsSuggestions.style.display = 'none';
+                            return;
+                        }
+                        filtered.forEach(tag => {
+                            const item = document.createElement('button');
+                            item.type = 'button';
+                            item.className = 'list-group-item list-group-item-action';
+                            item.textContent = tag;
+                            item.onclick = () => {
+                                addTag(tag);
+                                tagsSuggestions.style.display = 'none';
+                                tagsInput.value = '';
+                            };
+                            tagsSuggestions.appendChild(item);
+                        });
+                        tagsSuggestions.style.display = '';
+                    }
+
+                    function addTag(tag) {
+                        tag = tag.trim();
+                        if (!tag) return;
+                        // Cho phép thêm tag mới, không cần phải có trong allTags
+                        if (!selectedTags.includes(tag)) {
+                            selectedTags.push(tag);
+                            updateTagsUI();
+                        }
+                    }
+
+                    tagsInput.addEventListener('input', function() {
+                        showSuggestions(this.value);
+                    });
+
+                    tagsInput.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter' || e.key === ',') {
+                            e.preventDefault();
+                            let val = this.value.trim().replace(/,$/, '');
+                            if (val) addTag(val);
+                            this.value = '';
+                            tagsSuggestions.style.display = 'none';
+                        } else if (e.key === 'Escape') {
+                            tagsSuggestions.style.display = 'none';
+                        }
+                    });
+
+                    document.addEventListener('click', function(e) {
+                        if (!tagsSuggestions.contains(e.target) && e.target !== tagsInput) {
+                            tagsSuggestions.style.display = 'none';
+                        }
+                    });
+
+                    // Nếu có giá trị cũ (ví dụ khi submit lỗi), khôi phục lại
+                    window.addEventListener('DOMContentLoaded', function() {
+                        const oldTags = tagsHidden.value;
+                        if (oldTags) {
+                            selectedTags = oldTags.split(',').map(t => t.trim()).filter(t => t);
+                            updateTagsUI();
+                        }
+                    });
+                </script>
 
                 <div class="mb-3">
                     <label class="form-label">📂 File tài liệu</label>

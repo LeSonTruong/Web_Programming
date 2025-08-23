@@ -117,8 +117,9 @@ if (session_status() === PHP_SESSION_NONE) {
             <!-- Các mục menu -->
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-lg-center">
-                    <li class="nav-item"><a class="nav-link" href="index.php">Trang chủ</a></li>
-                    <li class="nav-item"><a class="nav-link" href="documents.php">Tài liệu</a></li>
+                    <li class="nav-item"><a class="nav-link" href="index.php">🏠 Trang chủ</a></li>
+                    <li class="nav-item"><a class="nav-link" href="documents.php">📄 Tài liệu</a></li>
+                    <li class="nav-item"><a class="nav-link" href="search_advanced.php">🔎 Tìm kiếm nâng cao</a></li>
 
                     <?php if (isset($_SESSION['user_id'])):
                         $display_name = $_SESSION['display_name'] ?? $_SESSION['username'];
@@ -135,9 +136,9 @@ if (session_status() === PHP_SESSION_NONE) {
                             $notifications_count = $stmt->fetchColumn();
                         }
                     ?>
-                        <li class="nav-item"><a class="nav-link" href="upload.php">Tải lên</a></li>
+                        <li class="nav-item"><a class="nav-link" href="upload.php">📤 Tải tài liệu lên</a></li>
                         <?php if ($_SESSION['role'] === 'admin'): ?>
-                            <li class="nav-item"><a class="nav-link" href="approve.php">Duyệt tài liệu <?php if ($notifications_count > 0) echo "($notifications_count)"; ?></a></li>
+                            <li class="nav-item"><a class="nav-link" href="approve.php">✅ Duyệt tài liệu <?php if ($notifications_count > 0) echo "($notifications_count)"; ?></a></li>
                         <?php endif; ?>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button"
@@ -149,7 +150,7 @@ if (session_status() === PHP_SESSION_NONE) {
                                 <?php endif; ?>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="profile.php">👤 tài khoản</a></li>
+                                <li><a class="dropdown-item" href="profile.php">👤 Tài khoản</a></li>
                                 <li><a class="dropdown-item" href="my_documents.php">📄 Quản lý tài liệu</a></li>
 
                                 <?php if ($_SESSION['role'] !== 'admin'): ?>
@@ -159,12 +160,9 @@ if (session_status() === PHP_SESSION_NONE) {
                                         </a>
                                     </li>
                                 <?php else: ?>
-                                    <li>
-                                        <a class="dropdown-item text-warning" href="ai_logs.php">📜 AI Logs</a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="downloads.php">📥 Lịch sử tải về</a>
-                                    </li>
+                                    <li><a class="dropdown-item" href="user.php">👥 Quản lý tài khoản</a></li>
+                                    <li><a class="dropdown-item text-warning" href="ai_logs.php">📜 AI Logs</a></li>
+                                    <li><a class="dropdown-item" href="downloads.php">📥 Lịch sử tải về</a></li>
                                 <?php endif; ?>
 
                                 <li><a class="dropdown-item" href="logout.php">🚪 Đăng xuất</a></li>
