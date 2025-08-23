@@ -68,20 +68,55 @@ if (session_status() === PHP_SESSION_NONE) {
         .dropdown-menu a:hover {
             background-color: #444444;
         }
+
+        /* ==== Ô tìm kiếm ==== */
+        .search-box {
+            max-width: 250px;
+        }
+
+        .search-box input {
+            border-radius: 20px;
+            padding: 4px 12px;
+        }
+
+        body.dark-mode .search-box input {
+            background-color: #2a2a2a;
+            color: #e0e0e0;
+            border: 1px solid #555;
+        }
+
+        body.dark-mode .search-box input::placeholder {
+            color: #aaa;
+        }
     </style>
 </head>
 
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark shadow-sm">
         <div class="container">
+            <!-- Logo -->
             <a class="navbar-brand fw-bold" href="index.php">StudyShare</a>
+
+            <!-- Ô tìm kiếm (luôn nằm trên header, không phụ thuộc menu) -->
+            <form class="d-flex search-box mx-auto d-none d-lg-flex" role="search" action="search.php" method="get">
+                <input
+                    class="form-control form-control-sm me-2"
+                    type="search"
+                    name="q"
+                    placeholder="Tìm tài liệu..."
+                    aria-label="Search">
+                <button class="btn btn-sm btn-outline-light" type="submit">🔍</button>
+            </form>
+
+            <!-- Nút thu gọn menu (hiện trên mobile) -->
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Menu">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
+            <!-- Các mục menu -->
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-center">
+                <ul class="navbar-nav ms-auto align-items-lg-center">
                     <li class="nav-item"><a class="nav-link" href="index.php">Trang chủ</a></li>
                     <li class="nav-item"><a class="nav-link" href="documents.php">Tài liệu</a></li>
 
@@ -114,13 +149,13 @@ if (session_status() === PHP_SESSION_NONE) {
                                 <?php endif; ?>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="profile.php">Quản lý tài khoản</a></li>
-                                <li><a class="dropdown-item" href="my_documents.php">Quản lý tài liệu</a></li>
+                                <li><a class="dropdown-item" href="profile.php">👤 tài khoản</a></li>
+                                <li><a class="dropdown-item" href="my_documents.php">📄 Quản lý tài liệu</a></li>
 
                                 <?php if ($_SESSION['role'] !== 'admin'): ?>
                                     <li>
                                         <a class="dropdown-item" href="notifications.php">
-                                            Thông báo <?php if ($notifications_count > 0) echo "($notifications_count)"; ?>
+                                            🔔 Thông báo <?php if ($notifications_count > 0) echo "($notifications_count)"; ?>
                                         </a>
                                     </li>
                                 <?php else: ?>
@@ -132,16 +167,24 @@ if (session_status() === PHP_SESSION_NONE) {
                                     </li>
                                 <?php endif; ?>
 
-                                <li><a class="dropdown-item" href="logout.php">Đăng xuất</a></li>
+                                <li><a class="dropdown-item" href="logout.php">🚪 Đăng xuất</a></li>
                             </ul>
-
                         </li>
                     <?php else: ?>
-                        <li class="nav-item"><a class="nav-link" href="login.php">Đăng nhập</a></li>
-                        <li class="nav-item"><a class="nav-link" href="register.php">Đăng ký</a></li>
+                        <li class="nav-item"><a class="nav-link" href="login.php">🔑 Đăng nhập</a></li>
+                        <li class="nav-item"><a class="nav-link" href="register.php">📝 Đăng ký</a></li>
                     <?php endif; ?>
 
-                    <li class="nav-item ms-2">
+                    <!-- Ô tìm kiếm cho mobile (hiện khi mở menu) -->
+                    <li class="nav-item d-lg-none mt-2">
+                        <form class="d-flex search-box" role="search" action="search.php" method="get">
+                            <input class="form-control form-control-sm me-2" type="search" name="q" placeholder="Tìm tài liệu..." aria-label="Search">
+                            <button class="btn btn-sm btn-outline-light" type="submit">🔍</button>
+                        </form>
+                    </li>
+
+                    <!-- Nút dark mode (luôn ở cuối menu trên mobile, bên phải header trên PC) -->
+                    <li class="nav-item ms-lg-3 mt-2 mt-lg-0">
                         <button id="theme-toggle" class="btn btn-sm btn-light">🌙</button>
                     </li>
                 </ul>

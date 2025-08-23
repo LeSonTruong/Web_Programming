@@ -1,51 +1,13 @@
 <?php
 include 'includes/header.php';
 include 'includes/db.php';
-include 'includes/ai.php'; // Gọi client $openai
+include 'includes/ai.php'; // Gọi các hàm createSummary(), createEmbedding()
 
 // ====== HÀM LOG AI ======
 function logAI($conn, $doc_id, $action, $status, $message = '')
 {
     $stmt = $conn->prepare("INSERT INTO ai_logs (doc_id, action, status, message) VALUES (?, ?, ?, ?)");
     $stmt->execute([$doc_id, $action, $status, $message]);
-}
-
-// ====== HÀM TẠO TÓM TẮT ======
-function generateSummary($client, $conn, $doc_id, $text)
-{
-    try {
-        $response = $client->chat()->create([
-            'model' => 'gpt-4o-mini',
-            'messages' => [
-                ['role' => 'system', 'content' => 'Bạn là AI chuyên tóm tắt tài liệu ngắn gọn, súc tích.'],
-                ['role' => 'user', 'content' => "Tóm tắt nội dung sau:\n\n$text"]
-            ],
-            'max_tokens' => 200,
-        ]);
-        $summary = $response->choices[0]->message->content ?? '';
-        logAI($conn, $doc_id, 'summary', 'success', 'Tóm tắt thành công');
-        return $summary;
-    } catch (Exception $e) {
-        logAI($conn, $doc_id, 'summary', 'fail', $e->getMessage());
-        return '';
-    }
-}
-
-// ====== HÀM TẠO EMBEDDING ======
-function generateEmbedding($client, $conn, $doc_id, $text)
-{
-    try {
-        $response = $client->embeddings()->create([
-            'model' => 'text-embedding-3-small',
-            'input' => $text,
-        ]);
-        $embedding = $response->data[0]->embedding ?? [];
-        logAI($conn, $doc_id, 'embedding', 'success', 'Embedding thành công');
-        return $embedding;
-    } catch (Exception $e) {
-        logAI($conn, $doc_id, 'embedding', 'fail', $e->getMessage());
-        return [];
-    }
 }
 
 // ====== KIỂM TRA QUYỀN ADMIN ======
@@ -69,27 +31,33 @@ if (isset($_GET['approve'])) {
     $doc = $stmt->fetch();
 
     if ($doc) {
-        if ($doc['status_id'] != 1) { // chỉ duyệt nếu pending
+        $stmt_user = $conn->prepare("SELECT role FROM users WHERE user_id=?");
+        $stmt_user->execute([$doc['user_id']]);
+        $user_post = $stmt_user->fetch();
+
+        if ($doc['status_id'] != 1) {
             echo '<div class="alert alert-info">⚠️ Tài liệu này đã được xử lý trước đó.</div>';
         } else {
             $textContent = $doc['description'] ?: $doc['title'];
             $textContent = mb_substr($textContent, 0, 5000);
 
+            // Tạo summary & embedding
             $summary = createSummary($textContent);
             $embedding = createEmbedding($textContent);
 
-
-            // Cập nhật documents: status_id=2 (approved)
+            // Lưu summary và cập nhật trạng thái
             $stmt = $conn->prepare("UPDATE documents SET status_id=2, summary=? WHERE doc_id=?");
             $stmt->execute([$summary, $doc_id]);
+            logAI($conn, $doc_id, 'summary', 'success', 'Tóm tắt thành công');
 
-            // Lưu embedding nếu có
+            // Lưu embedding
             if (!empty($embedding)) {
                 $stmt = $conn->prepare("INSERT INTO document_embeddings (doc_id, vector) VALUES (?, ?)");
                 $stmt->execute([$doc_id, json_encode($embedding)]);
+                logAI($conn, $doc_id, 'embedding', 'success', 'Embedding thành công');
             }
 
-            // ====== TẠO THÔNG BÁO CHO USER ======
+            // Tạo thông báo cho user
             $stmt_notif = $conn->prepare("INSERT INTO notifications (user_id, message) VALUES (?, ?)");
             $message = "✅ Tài liệu '{$doc['title']}' của bạn đã được duyệt!";
             $stmt_notif->execute([$doc['user_id'], $message]);
@@ -107,10 +75,9 @@ if (isset($_GET['reject'])) {
     $doc = $stmt->fetch();
 
     if ($doc && $doc['status_id'] == 1) {
-        $stmt = $conn->prepare("UPDATE documents SET status_id=3 WHERE doc_id=?"); // rejected
+        $stmt = $conn->prepare("UPDATE documents SET status_id=3 WHERE doc_id=?");
         $stmt->execute([$doc_id]);
 
-        // Tạo thông báo cho user
         $stmt_notif = $conn->prepare("INSERT INTO notifications (user_id, message) VALUES (?, ?)");
         $message = "❌ Tài liệu '{$doc['title']}' của bạn đã bị từ chối!";
         $stmt_notif->execute([$doc['user_id'], $message]);
