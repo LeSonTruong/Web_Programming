@@ -92,13 +92,13 @@ if (session_status() === PHP_SESSION_NONE) {
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark shadow-sm">
-        <div class="container">
+    <nav class="navbar navbar-expand-lg navbar-dark shadow-sm fixed-top">
+        <div class="container d-flex align-items-center justify-content-between">
             <!-- Logo -->
-            <a class="navbar-brand fw-bold" href="index.php">StudyShare</a>
+            <a class="navbar-brand fw-bold me-3" href="index.php">StudyShare</a>
 
-            <!-- Ô tìm kiếm (luôn nằm trên header, không phụ thuộc menu) -->
-            <form class="d-flex search-box mx-auto d-none d-lg-flex" role="search" action="search.php" method="get">
+            <!-- Ô tìm kiếm (nằm ngang với logo và menu, không bị kéo lên/xuống) -->
+            <form class="d-flex search-box flex-grow-1 mx-3 d-none d-lg-flex" role="search" action="search.php" method="get">
                 <input
                     class="form-control form-control-sm me-2"
                     type="search"
@@ -109,7 +109,7 @@ if (session_status() === PHP_SESSION_NONE) {
             </form>
 
             <!-- Nút thu gọn menu (hiện trên mobile) -->
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            <button class="navbar-toggler ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Menu">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -150,7 +150,8 @@ if (session_status() === PHP_SESSION_NONE) {
                                 <?php endif; ?>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="profile.php">👤 Tài khoản</a></li>
+                                <li><a class="dropdown-item" href="profile.php?user=<?= htmlspecialchars($user['username'] ?? $_SESSION['username']) ?>">👤 Trang cá nhân</a></li>
+                                <li><a class="dropdown-item" href="settings_profile.php">⚙️ Cài đặt tài khoản</a></li>
                                 <li><a class="dropdown-item" href="my_documents.php">📄 Quản lý tài liệu</a></li>
 
                                 <?php if ($_SESSION['role'] !== 'admin'): ?>
@@ -207,4 +208,6 @@ if (session_status() === PHP_SESSION_NONE) {
         });
     </script>
 
+    <!-- Thêm khoảng trống phía trên để tránh bị che bởi navbar cố định -->
+    <div style="height: 70px;"></div>
     <main class="container my-4">

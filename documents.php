@@ -46,6 +46,7 @@
                                     <strong>Đánh giá:</strong> <?= $review_summary ?>
                                     (👍 <?= $doc['positive_count'] ?? 0 ?> / 👎 <?= $doc['negative_count'] ?? 0 ?>)
                                 </p>
+                                <p class="card-text"><strong>Lượt xem:</strong> <?= number_format($doc['views'] ?? 0) ?></p>
 
                                 <?php if (!empty($doc['description'])): ?>
                                     <p class="card-text"><strong>Mô tả:</strong> <?= nl2br(htmlspecialchars($doc['description'] ?? '')) ?></p>

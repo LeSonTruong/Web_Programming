@@ -74,6 +74,7 @@ include 'includes/header.php';
                                     <p class="card-text"><strong>Môn học:</strong> <?= htmlspecialchars($doc['subject_name']) ?></p>
                                     <p class="card-text"><strong>Người đăng:</strong> <?= htmlspecialchars($doc['username']) ?></p>
                                     <p class="card-text text-info"><strong>Đánh giá:</strong> <?= $review_summary ?> (👍 <?= $doc['positive_count'] ?> / 👎 <?= $doc['negative_count'] ?>)</p>
+                                    <p class="card-text"><strong>Lượt xem:</strong> <?= number_format($doc['views'] ?? 0) ?></p>
 
                                     <?php if (!empty($doc['description'])): ?>
                                         <p class="card-text"><strong>Mô tả:</strong> <?= nl2br(htmlspecialchars($doc['description'])) ?></p>

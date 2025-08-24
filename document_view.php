@@ -4,8 +4,14 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 include 'includes/db.php';
+include 'includes/header.php';
 
 $doc_id = (int)($_POST['doc_id'] ?? $_GET['id'] ?? 0);
+
+// Tăng lượt xem mỗi lần truy cập
+if ($doc_id) {
+    $conn->prepare("UPDATE documents SET views = views + 1 WHERE doc_id = ?")->execute([$doc_id]);
+}
 
 // ===== XỬ LÝ XÓA/SỬA BÌNH LUẬN =====
 // ===== XÓA TAG KHỎI TÀI LIỆU (CHỈ ADMIN) =====
@@ -248,7 +254,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_GET['edit_comment'])) {
     exit();
 }
 
-include 'includes/header.php';
+
 
 // ===== LẤY TAGS CỦA TÀI LIỆU =====
 $tagsStmt = $conn->prepare("SELECT t.tag_name FROM document_tags dt JOIN tags t ON dt.tag_id = t.tag_id WHERE dt.doc_id = ?");
@@ -535,6 +541,7 @@ foreach ($all_replies as $r) {
     </div>
     <p><strong>Mô tả:</strong> <?= nl2br(htmlspecialchars($doc['description'] ?? '')) ?></p>
     <p><strong>Đánh giá:</strong> <?= $review_summary ?> (👍 <?= $doc['positive_count'] ?? 0 ?> | 👎 <?= $doc['negative_count'] ?? 0 ?>)</p>
+    <p><strong>Lượt xem:</strong> <?= number_format($doc['views'] ?? 0) ?></p>
     <p><strong>Lượt tải:</strong> <?= $total_downloads ?></p>
 
     <!-- Nút đánh giá -->

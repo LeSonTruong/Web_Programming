@@ -65,6 +65,33 @@ if ($query !== '') {
         $totalResults = count($scored);
         $totalPages = ceil($totalResults / $limit);
         $documents = array_slice($scored, $offset, $limit);
+
+        // Nếu không có kết quả từ embedding, thử tìm kiếm truyền thống (LIKE)
+        if (count($documents) === 0) {
+            $stmt = $conn->prepare("SELECT d.*, u.username, s.subject_name,
+                SUM(CASE WHEN r.review_type = 'positive' THEN 1 ELSE 0 END) AS positive_count,
+                SUM(CASE WHEN r.review_type = 'negative' THEN 1 ELSE 0 END) AS negative_count
+                FROM documents d
+                JOIN users u ON d.user_id = u.user_id
+                LEFT JOIN subjects s ON d.subject_id = s.subject_id
+                LEFT JOIN reviews r ON d.doc_id = r.doc_id
+                WHERE d.status_id = 2 AND (d.title LIKE :title OR d.description LIKE :desc)
+                GROUP BY d.doc_id
+                ORDER BY d.upload_date DESC
+                LIMIT :limit OFFSET :offset");
+            $likeQuery = "%$query%";
+            $stmt->bindValue(':title', $likeQuery, PDO::PARAM_STR);
+            $stmt->bindValue(':desc', $likeQuery, PDO::PARAM_STR);
+            $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+            $stmt->execute();
+            $documents = $stmt->fetchAll();
+            // Đếm tổng số kết quả
+            $countStmt = $conn->prepare("SELECT COUNT(*) FROM documents d WHERE d.status_id = 1 AND (d.title LIKE ? OR d.description LIKE ?)");
+            $countStmt->execute([$likeQuery, $likeQuery]);
+            $totalRows = $countStmt->fetchColumn();
+            $totalPages = ceil($totalRows / $limit);
+        }
     } catch (Exception $e) {
         echo "<div class='alert alert-danger'>Lỗi khi tìm kiếm: " . htmlspecialchars($e->getMessage()) . "</div>";
     }
@@ -72,6 +99,7 @@ if ($query !== '') {
 ?>
 
 <div class="container my-4">
+    <link rel="stylesheet" href="css/hover.css">
     <h2 class="mb-4">🔎 Tìm kiếm tài liệu (Semantic Search)</h2>
 
     <!-- Form tìm kiếm -->
@@ -92,52 +120,69 @@ if ($query !== '') {
     <?php else: ?>
         <div class="row">
             <?php foreach ($documents as $doc): ?>
+                <?php
+                $subject_name = $doc['subject_name'] ?? '';
+                $username = $doc['username'] ?? '';
+                $positive_count = $doc['positive_count'] ?? 0;
+                $negative_count = $doc['negative_count'] ?? 0;
+                $views = $doc['views'] ?? 0;
+                $description = $doc['description'] ?? '';
+                $total_reviews = $positive_count + $negative_count;
+                if ($total_reviews > 0) {
+                    $ratio = $positive_count / $total_reviews;
+                    $review_summary = $ratio >= 0.7 ? "Đánh giá tích cực" : ($ratio >= 0.4 ? "Đánh giá trung bình" : "Đánh giá tiêu cực");
+                } else {
+                    $review_summary = "Chưa có đánh giá";
+                }
+                ?>
                 <div class="col-md-6 col-lg-4 mb-4">
-                    <div class="card h-100 shadow-sm">
-                        <div class="card-body d-flex flex-column">
-                            <h5 class="card-title"><?= highlight($doc['title'], $query) ?></h5>
-                            <p class="card-text"><strong>Người đăng:</strong> <?= htmlspecialchars($doc['username']) ?></p>
-                            <?php if (!empty($doc['description'])): ?>
-                                <p class="card-text"><strong>Mô tả:</strong> <?= highlight($doc['description'], $query) ?></p>
-                            <?php endif; ?>
-                            <p class="card-text text-muted small">🔎 Độ tương đồng: <?= round($doc['score'] * 100, 2) ?>%</p>
-                            <a href="<?= htmlspecialchars($doc['file_path']) ?>" target="_blank" class="btn btn-success mt-auto">
-                                📥 Tải xuống
-                            </a>
+                    <a href="document_view.php?id=<?= $doc['doc_id'] ?? 0 ?>" class="text-decoration-none text-dark">
+                        <div class="card h-100 shadow-sm doc-card">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title"><?= htmlspecialchars($doc['title'] ?? '') ?></h5>
+                                <p class="card-text"><strong>Môn học:</strong> <?= htmlspecialchars($subject_name) ?></p>
+                                <p class="card-text"><strong>Người đăng:</strong> <?= htmlspecialchars($username) ?></p>
+                                <p class="card-text text-info"><strong>Đánh giá:</strong> <?= $review_summary ?> (👍 <?= $positive_count ?> / 👎 <?= $negative_count ?>)</p>
+                                <p class="card-text"><strong>Lượt xem:</strong> <?= number_format($views) ?></p>
+                                <?php if (!empty($description)): ?>
+                                    <p class="card-text"><strong>Mô tả:</strong> <?= nl2br(htmlspecialchars($description)) ?></p>
+                                <?php endif; ?>
+                            </div>
+                            <div class="card-footer small text-muted">
+                                Đăng ngày: <?= !empty($doc['upload_date']) ? date("d/m/Y H:i", strtotime($doc['upload_date'])) : '' ?>
+                            </div>
                         </div>
-                        <div class="card-footer text-muted small">
-                            Đăng ngày: <?= date("d/m/Y H:i", strtotime($doc['upload_date'])) ?>
-                        </div>
-                    </div>
+                    </a>
                 </div>
-            <?php endforeach; ?>
         </div>
+    <?php endforeach; ?>
+</div>
 
-        <!-- Phân trang -->
-        <?php if ($totalPages > 1): ?>
-            <nav>
-                <ul class="pagination justify-content-center">
-                    <?php if ($page > 1): ?>
-                        <li class="page-item">
-                            <a class="page-link" href="?q=<?= urlencode($query) ?>&page=<?= $page - 1 ?>">« Trước</a>
-                        </li>
-                    <?php endif; ?>
+<!-- Phân trang -->
+<?php if ($totalPages > 1): ?>
+    <nav>
+        <ul class="pagination justify-content-center">
+            <?php if ($page > 1): ?>
+                <li class="page-item">
+                    <a class="page-link" href="?q=<?= urlencode($query) ?>&page=<?= $page - 1 ?>">« Trước</a>
+                </li>
+            <?php endif; ?>
 
-                    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                        <li class="page-item <?= $i == $page ? 'active' : '' ?>">
-                            <a class="page-link" href="?q=<?= urlencode($query) ?>&page=<?= $i ?>"><?= $i ?></a>
-                        </li>
-                    <?php endfor; ?>
+            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+                    <a class="page-link" href="?q=<?= urlencode($query) ?>&page=<?= $i ?>"><?= $i ?></a>
+                </li>
+            <?php endfor; ?>
 
-                    <?php if ($page < $totalPages): ?>
-                        <li class="page-item">
-                            <a class="page-link" href="?q=<?= urlencode($query) ?>&page=<?= $page + 1 ?>">Sau »</a>
-                        </li>
-                    <?php endif; ?>
-                </ul>
-            </nav>
-        <?php endif; ?>
-    <?php endif; ?>
+            <?php if ($page < $totalPages): ?>
+                <li class="page-item">
+                    <a class="page-link" href="?q=<?= urlencode($query) ?>&page=<?= $page + 1 ?>">Sau »</a>
+                </li>
+            <?php endif; ?>
+        </ul>
+    </nav>
+<?php endif; ?>
+<?php endif; ?>
 </div>
 
 <?php include 'includes/footer.php'; ?>
