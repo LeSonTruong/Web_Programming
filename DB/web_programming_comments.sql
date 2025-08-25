@@ -1,0 +1,60 @@
+-- MySQL dump 10.13  Distrib 8.0.43, for Win64 (x86_64)
+--
+-- Host: 127.0.0.1    Database: web_programming
+-- ------------------------------------------------------
+-- Server version	8.0.43
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `comments`
+--
+
+DROP TABLE IF EXISTS `comments`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `comments` (
+  `comment_id` int NOT NULL AUTO_INCREMENT,
+  `doc_id` int DEFAULT NULL,
+  `user_id` int DEFAULT NULL,
+  `content` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `parent_comment_id` int DEFAULT NULL,
+  `edited_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`comment_id`),
+  KEY `doc_id` (`doc_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `comments_ibfk_1` FOREIGN KEY (`doc_id`) REFERENCES `documents` (`doc_id`) ON DELETE CASCADE,
+  CONSTRAINT `comments_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `comments`
+--
+
+LOCK TABLES `comments` WRITE;
+/*!40000 ALTER TABLE `comments` DISABLE KEYS */;
+INSERT INTO `comments` VALUES (1,10,1,'Hay!','2025-08-23 14:57:22',NULL,NULL),(2,10,1,'Nice!','2025-08-23 14:58:44',NULL,NULL),(3,10,1,'áohdfkljahfjkladflkjas','2025-08-23 15:05:30',NULL,NULL),(4,10,1,'một hai ba!','2025-08-23 15:05:50',NULL,NULL),(5,10,1,'một hai ba!','2025-08-23 15:08:37',NULL,NULL),(6,10,1,'một hai bấd!','2025-08-23 15:08:40',NULL,NULL),(8,10,1,'a','2025-08-23 16:50:23',NULL,NULL),(9,10,1,'a','2025-08-23 16:50:27',NULL,NULL),(10,9,1,'AAAAAA','2025-08-23 17:18:26',NULL,'2025-08-23 18:21:02'),(11,9,1,'a','2025-08-23 17:27:07',10,NULL),(12,9,1,'aa','2025-08-23 17:41:39',10,NULL),(13,9,1,'Ollo!','2025-08-23 17:50:13',NULL,'2025-08-23 18:19:01'),(14,9,1,'aa','2025-08-23 18:04:07',NULL,'2025-08-23 18:21:18'),(15,9,1,'Hello','2025-08-23 18:07:55',13,NULL),(16,9,1,'aa','2025-08-23 18:21:26',10,NULL),(17,9,1,'À','2025-08-23 18:22:19',NULL,NULL),(18,9,1,'À','2025-08-23 18:23:20',NULL,NULL),(19,9,1,'Ấ','2025-08-23 18:25:34',NULL,NULL),(20,9,1,'AAS','2025-08-23 18:26:54',NULL,NULL),(21,9,1,'aAS','2025-08-23 18:27:40',NULL,NULL),(22,9,1,'1','2025-08-23 18:28:25',NULL,NULL),(23,9,1,'1','2025-08-23 18:30:37',NULL,NULL);
+/*!40000 ALTER TABLE `comments` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2025-08-25  8:08:02
