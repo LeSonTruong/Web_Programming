@@ -32,22 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $conn->prepare("UPDATE users SET banned=0 WHERE user_id=? AND role='user'");
                 $stmt->execute([$user_id]);
                 break;
-            case 'lock_comments':
-                $stmt = $conn->prepare("UPDATE users SET comments_locked=1 WHERE user_id=? AND role='user'");
-                $stmt->execute([$user_id]);
-                break;
-            case 'unlock_comments':
-                $stmt = $conn->prepare("UPDATE users SET comments_locked=0 WHERE user_id=? AND role='user'");
-                $stmt->execute([$user_id]);
-                break;
-            case 'lock_uploads':
-                $stmt = $conn->prepare("UPDATE users SET uploads_locked=1 WHERE user_id=? AND role='user'");
-                $stmt->execute([$user_id]);
-                break;
-            case 'unlock_uploads':
-                $stmt = $conn->prepare("UPDATE users SET uploads_locked=0 WHERE user_id=? AND role='user'");
-                $stmt->execute([$user_id]);
-                break;
+                // Đã loại bỏ các chức năng khóa bình luận và tài liệu do không có trường trong CSDL
         }
     }
 }

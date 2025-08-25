@@ -13,6 +13,53 @@ if (session_status() === PHP_SESSION_NONE) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <style>
+        /* Animation chuông rung */
+        .bell-animate {
+            animation: bell-shake 0.7s cubic-bezier(.36, .07, .19, .97) both;
+        }
+
+        @keyframes bell-shake {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            10% {
+                transform: rotate(-15deg);
+            }
+
+            20% {
+                transform: rotate(10deg);
+            }
+
+            30% {
+                transform: rotate(-10deg);
+            }
+
+            40% {
+                transform: rotate(6deg);
+            }
+
+            50% {
+                transform: rotate(-4deg);
+            }
+
+            60% {
+                transform: rotate(2deg);
+            }
+
+            70% {
+                transform: rotate(-1deg);
+            }
+
+            80% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(0deg);
+            }
+        }
+
         /* ==== Dark Mode CSS Biến ==== */
         :root {
             --bg-color: #ffffff;
@@ -128,8 +175,17 @@ if (session_status() === PHP_SESSION_NONE) {
                         require_once 'includes/db.php';
                         $notifications_count = 0;
                         if ($_SESSION['role'] === 'admin') {
+                            // Thông báo duyệt tài liệu
                             $stmt = $conn->query("SELECT COUNT(*) FROM documents WHERE status_id=1");
-                            $notifications_count = $stmt->fetchColumn();
+                            $pending_docs = $stmt->fetchColumn();
+                            // Thông báo báo cáo vi phạm
+                            $stmt = $conn->query("SELECT COUNT(*) FROM reports WHERE status='pending'");
+                            $pending_reports = $stmt->fetchColumn();
+                            // Thông báo bình luận bị report
+                            $stmt = $conn->query("SELECT COUNT(*) FROM comments WHERE reported=1");
+                            $reported_comments = $stmt->fetchColumn();
+                            // Tổng thông báo
+                            $notifications_count = $pending_docs + $pending_reports + $reported_comments;
                         } else {
                             $stmt = $conn->prepare("SELECT COUNT(*) FROM notifications WHERE user_id=? AND is_read=0");
                             $stmt->execute([$_SESSION['user_id']]);
@@ -137,30 +193,25 @@ if (session_status() === PHP_SESSION_NONE) {
                         }
                     ?>
                         <li class="nav-item"><a class="nav-link" href="upload.php">📤 Tải tài liệu lên</a></li>
-                        <?php if ($_SESSION['role'] === 'admin'): ?>
-                            <li class="nav-item"><a class="nav-link" href="approve.php">✅ Duyệt tài liệu <?php if ($notifications_count > 0) echo "($notifications_count)"; ?></a></li>
-                        <?php endif; ?>
-                        <li class="nav-item dropdown">
+                        <li class="nav-item dropdown position-relative">
                             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button"
                                 data-bs-toggle="dropdown" aria-expanded="false">
                                 <img src="uploads/avatars/<?= htmlspecialchars($avatar) ?>" alt="Avatar" width="30" height="30" class="rounded-circle me-2">
                                 <?= htmlspecialchars($display_name) ?>
+                                <span class="ms-2 bell-icon<?= ($notifications_count > 0 ? ' bell-animate' : '') ?>" id="dropdown-bell">🔔</span>
                                 <?php if ($notifications_count > 0): ?>
-                                    <span class="badge bg-danger ms-2"><?= $notifications_count ?></span>
+                                    <span class="badge bg-danger position-absolute" style="top:8px; right:2px; z-index:2;"><?= $notifications_count ?></span>
                                 <?php endif; ?>
                             </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
+                            <ul class="dropdown-menu dropdown-menu-end" style="min-width:260px;">
+                                <!-- Removed gray 'Thông báo' header and divider for cleaner dropdown -->
                                 <li><a class="dropdown-item" href="profile.php?user=<?= htmlspecialchars($user['username'] ?? $_SESSION['username']) ?>">👤 Trang cá nhân</a></li>
                                 <li><a class="dropdown-item" href="settings_profile.php">⚙️ Cài đặt tài khoản</a></li>
                                 <li><a class="dropdown-item" href="my_documents.php">📄 Quản lý tài liệu</a></li>
 
                                 <?php if ($_SESSION['role'] !== 'admin'): ?>
-                                    <li>
-                                        <a class="dropdown-item" href="notifications.php">
-                                            🔔 Thông báo <?php if ($notifications_count > 0) echo "($notifications_count)"; ?>
-                                        </a>
-                                    </li>
                                 <?php else: ?>
+                                    <li><a class="dropdown-item" href="notifications.php">🔔 Thông báo <?php if ($notifications_count > 0) echo "($notifications_count)"; ?></a></li>
                                     <li><a class="dropdown-item" href="user.php">👥 Quản lý tài khoản</a></li>
                                     <li><a class="dropdown-item text-warning" href="ai_logs.php">📜 AI Logs</a></li>
                                     <li><a class="dropdown-item" href="downloads.php">📥 Lịch sử tải về</a></li>
@@ -192,6 +243,15 @@ if (session_status() === PHP_SESSION_NONE) {
     </nav>
 
     <script>
+        // Hiệu ứng chuông rung khi có thông báo mới
+        document.addEventListener('DOMContentLoaded', function() {
+            var bell = document.querySelector('.bell-icon');
+            if (bell && bell.classList.contains('bell-animate')) {
+                setTimeout(function() {
+                    bell.classList.remove('bell-animate');
+                }, 1200);
+            }
+        });
         document.addEventListener('DOMContentLoaded', function() {
             const toggleBtn = document.getElementById('theme-toggle');
             if (localStorage.getItem('dark-mode') === 'true') {
@@ -209,5 +269,4 @@ if (session_status() === PHP_SESSION_NONE) {
     </script>
 
     <!-- Thêm khoảng trống phía trên để tránh bị che bởi navbar cố định -->
-    <div style="height: 70px;"></div>
     <main class="container my-4">

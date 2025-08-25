@@ -1,10 +1,10 @@
 <?php
+include 'includes/header.php';
 date_default_timezone_set('Asia/Ho_Chi_Minh');
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 include 'includes/db.php';
-include 'includes/header.php';
 
 $doc_id = (int)($_POST['doc_id'] ?? $_GET['id'] ?? 0);
 
@@ -299,6 +299,14 @@ $file = $doc['file_path'] ?? '';
 $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
 $file_url = 'https://yourdomain.com/' . $file; // đổi sang URL thực tế
 
+// ===== LẤY TRẠNG THÁI REVIEW CỦA NGƯỜI DÙNG HIỆN TẠI =====
+$user_review_type = '';
+if (isset($_SESSION['user_id'])) {
+    $reviewStmt = $conn->prepare("SELECT review_type FROM reviews WHERE user_id = ? AND doc_id = ? LIMIT 1");
+    $reviewStmt->execute([$_SESSION['user_id'], $doc_id]);
+    $user_review_type = $reviewStmt->fetchColumn() ?: '';
+}
+
 // ===== LẤY DANH SÁCH BÌNH LUẬN =====
 
 // Phân trang bình luận
@@ -306,7 +314,7 @@ $file_url = 'https://yourdomain.com/' . $file; // đổi sang URL thực tế
 $comments_per_page = 10;
 $comment_page = isset($_GET['comment_page']) ? max(1, (int)$_GET['comment_page']) : 1;
 $offset = ($comment_page - 1) * $comments_per_page;
-$comment_sort = ($_GET['comment_sort'] ?? 'asc') === 'desc' ? 'DESC' : 'ASC';
+$comment_sort = ($_GET['comment_sort'] ?? 'desc') === 'desc' ? 'DESC' : 'ASC';
 
 $like_sort = ($_GET['like_sort'] ?? '') === 'desc' ? 'DESC' : (($_GET['like_sort'] ?? '') === 'asc' ? 'ASC' : '');
 $dislike_sort = ($_GET['dislike_sort'] ?? '') === 'desc' ? 'DESC' : (($_GET['dislike_sort'] ?? '') === 'asc' ? 'ASC' : '');
@@ -321,10 +329,11 @@ $total_comment_pages = max(1, ceil($total_comments / $comments_per_page));
 
 // Lấy bình luận + số lượt like, reply dạng cây
 
+
 $order_by = [];
 if ($like_sort) $order_by[] = "like_count $like_sort";
 if ($dislike_sort) $order_by[] = "dislike_count $dislike_sort";
-$order_by[] = "c.created_at $comment_sort";
+$order_by[] = "latest_activity $comment_sort";
 $order_sql = implode(", ", $order_by);
 
 $where_sql = "c.doc_id=? AND c.parent_comment_id IS NULL";
@@ -337,7 +346,11 @@ if ($search_user) {
 $stmt = $conn->prepare("
     SELECT c.*, u.username,
         (SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = c.comment_id) AS like_count,
-        (SELECT COUNT(*) FROM comment_dislikes cd WHERE cd.comment_id = c.comment_id) AS dislike_count
+        (SELECT COUNT(*) FROM comment_dislikes cd WHERE cd.comment_id = c.comment_id) AS dislike_count,
+        GREATEST(
+            UNIX_TIMESTAMP(c.created_at),
+            IFNULL((SELECT MAX(UNIX_TIMESTAMP(created_at)) FROM comments r WHERE r.parent_comment_id = c.comment_id), 0)
+        ) AS latest_activity
     FROM comments c
     JOIN users u ON c.user_id = u.user_id
     WHERE $where_sql
@@ -369,7 +382,7 @@ foreach ($all_replies as $r) {
 }
 ?>
 
-<div class="container my-4">
+<div class="container my-4 pt-5">
     <div class="d-flex justify-content-between align-items-center mb-2">
         <h2 class="mb-0"><?= htmlspecialchars($doc['title'] ?? '') ?></h2>
 
@@ -540,20 +553,79 @@ foreach ($all_replies as $r) {
         </div>
     </div>
     <p><strong>Mô tả:</strong> <?= nl2br(htmlspecialchars($doc['description'] ?? '')) ?></p>
-    <p><strong>Đánh giá:</strong> <?= $review_summary ?> (👍 <?= $doc['positive_count'] ?? 0 ?> | 👎 <?= $doc['negative_count'] ?? 0 ?>)</p>
+    <p><strong>Đánh giá:</strong> <span id="review-summary-text"><?= $review_summary ?></span> (👍 <span id="like-count"><?= $doc['positive_count'] ?? 0 ?></span> | 👎 <span id="dislike-count"><?= $doc['negative_count'] ?? 0 ?></span>)</p>
     <p><strong>Lượt xem:</strong> <?= number_format($doc['views'] ?? 0) ?></p>
     <p><strong>Lượt tải:</strong> <?= $total_downloads ?></p>
 
-    <!-- Nút đánh giá -->
-    <?php if (isset($_SESSION['user_id'])): ?>
-        <form method="post" class="mb-3">
-            <input type="hidden" name="doc_id" value="<?= $doc['doc_id'] ?>">
-            <button type="submit" name="review_type" value="positive" class="btn btn-success">👍 Thích</button>
-            <button type="submit" name="review_type" value="negative" class="btn btn-danger">👎 Không thích</button>
-        </form>
-    <?php else: ?>
-        <div class="alert alert-warning">⚠️ Bạn cần <a href="login.php">đăng nhập</a> để đánh giá tài liệu.</div>
-    <?php endif; ?>
+    <!-- Nút đánh giá AJAX -->
+    <div class="mb-3">
+        <?php if (isset($_SESSION['user_id'])): ?>
+            <button id="like-btn" class="btn btn-success me-2<?= ($user_review_type === 'positive' ? ' active' : '') ?>">👍 Thích</button>
+            <button id="dislike-btn" class="btn btn-danger<?= ($user_review_type === 'negative' ? ' active' : '') ?>">👎 Không thích</button>
+        <?php else: ?>
+            <div class="alert alert-warning">⚠️ Bạn cần <a href="login.php">đăng nhập</a> để đánh giá tài liệu.</div>
+        <?php endif; ?>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const likeBtn = document.getElementById('like-btn');
+            const dislikeBtn = document.getElementById('dislike-btn');
+            const likeCount = document.getElementById('like-count');
+            const dislikeCount = document.getElementById('dislike-count');
+            const docId = <?= json_encode($doc['doc_id']) ?>;
+            let userReviewType = <?= json_encode($user_review_type) ?>;
+
+            function updateButtonState() {
+                if (userReviewType === 'positive') {
+                    likeBtn.classList.add('active');
+                    dislikeBtn.classList.remove('active');
+                } else if (userReviewType === 'negative') {
+                    dislikeBtn.classList.add('active');
+                    likeBtn.classList.remove('active');
+                } else {
+                    likeBtn.classList.remove('active');
+                    dislikeBtn.classList.remove('active');
+                }
+            }
+
+            function sendReview(type) {
+                fetch('review.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: 'doc_id=' + encodeURIComponent(docId) + '&review_type=' + encodeURIComponent(type)
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            likeCount.textContent = data.positive_count;
+                            dislikeCount.textContent = data.negative_count;
+                            userReviewType = type;
+                            updateButtonState();
+                            // Tính lại review_summary
+                            const total = data.positive_count + data.negative_count;
+                            let summary = 'Chưa có đánh giá';
+                            if (total > 0) {
+                                const ratio = data.positive_count / total;
+                                if (ratio >= 0.7) summary = 'Đánh giá tích cực';
+                                else if (ratio >= 0.4) summary = 'Đánh giá trung bình';
+                                else summary = 'Đánh giá tiêu cực';
+                            }
+                            document.getElementById('review-summary-text').textContent = summary;
+                        }
+                    });
+            }
+            if (likeBtn) likeBtn.onclick = function() {
+                if (userReviewType !== 'positive') sendReview('positive');
+            };
+            if (dislikeBtn) dislikeBtn.onclick = function() {
+                if (userReviewType !== 'negative') sendReview('negative');
+            };
+            updateButtonState();
+        });
+    </script>
 
     <!-- Universal Viewer -->
     <div class="file-viewer my-3" style="min-height:600px;">
@@ -599,7 +671,7 @@ foreach ($all_replies as $r) {
         <div class="alert alert-warning">⚠️ Tạo tài khoản hoặc đăng nhập để bình luận.</div>
     <?php endif; ?>
 
-    <form method="get" class="row g-2 mb-3 align-items-end">
+    <form method="get" class="row g-2 mb-3 align-items-end" id="comment-filter-form">
         <input type="hidden" name="id" value="<?= $doc_id ?>">
         <div class="col-auto">
             <label for="comment_sort" class="form-label">Thời gian gửi</label>
@@ -629,9 +701,27 @@ foreach ($all_replies as $r) {
             <input type="text" name="search_user" id="search_user" class="form-control" value="<?= htmlspecialchars($search_user) ?>" placeholder="Nhập username...">
         </div>
         <div class="col-auto">
-            <button class="btn btn-primary">Lọc</button>
+            <button class="btn btn-primary" id="filter-btn" type="submit">Lọc</button>
         </div>
     </form>
+    <script>
+        document.getElementById('comment-filter-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const form = e.target;
+            const params = new URLSearchParams(new FormData(form)).toString();
+            fetch(window.location.pathname + '?' + params)
+                .then(res => res.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newComments = doc.querySelector('.container.my-4.pt-5');
+                    const oldComments = document.querySelector('.container.my-4.pt-5');
+                    if (newComments && oldComments) {
+                        oldComments.innerHTML = newComments.innerHTML;
+                    }
+                });
+        });
+    </script>
 
     <!-- Hiển thị bình luận -->
     <?php if (!$comments): ?>
@@ -668,6 +758,12 @@ foreach ($all_replies as $r) {
                         body.dark-mode .comment-time {
                             color: #ffd700;
                         }
+
+                        .reply-info {
+                            color: #28a745;
+                            font-size: 0.95em;
+                            margin-left: 8px;
+                        }
                     </style>
                     <div class="comment-content-area">
                         <?php
@@ -687,6 +783,18 @@ foreach ($all_replies as $r) {
                         <button class="btn btn-sm btn-outline-primary like-comment-btn" data-id="<?= $c['comment_id'] ?>">👍 <span class="like-count"><?= $c['like_count'] ?></span></button>
                         <button class="btn btn-sm btn-outline-danger dislike-comment-btn" data-id="<?= $c['comment_id'] ?>">👎 <span class="dislike-count"><?= $c['dislike_count'] ?? 0 ?></span></button>
                         <button class="btn btn-sm btn-outline-secondary reply-comment-btn" data-id="<?= $c['comment_id'] ?>">↩️ Phản hồi</button>
+                        <button class="btn btn-sm btn-outline-warning report-comment-btn" data-id="<?= $c['comment_id'] ?>" data-username="<?= htmlspecialchars($c['username']) ?>">🚩 Báo cáo</button>
+                        <?php
+                        // Tìm reply mới nhất cho comment này
+                        $latest_reply = null;
+                        if (!empty($replies_by_comment[$c['comment_id']])) {
+                            $latest_reply = array_reduce($replies_by_comment[$c['comment_id']], function ($a, $b) {
+                                return (strtotime($a['created_at']) > strtotime($b['created_at'])) ? $a : $b;
+                            }, $replies_by_comment[$c['comment_id']][0]);
+                        }
+                        if ($latest_reply): ?>
+                            <span class="reply-info">Phản hồi mới nhất: <?= date("H:i", strtotime($latest_reply['created_at'])) ?> Ngày <?= date("d/m/Y", strtotime($latest_reply['created_at'])) ?> (<?= timeAgo($latest_reply['created_at']) ?>)</span>
+                        <?php endif; ?>
                         <?php if ($is_owner): ?>
                             <a href="?edit_comment=<?= $c['comment_id'] ?>&id=<?= $doc['doc_id'] ?>#comment-<?= $c['comment_id'] ?>" class="btn btn-sm btn-warning">Sửa</a>
                         <?php endif; ?>
@@ -740,7 +848,65 @@ foreach ($all_replies as $r) {
 <?php } ?>
 </div>
 
-<div class="container mt-4">
+<div class="container mt-4 pt-5">
+    <!-- Modal báo cáo bình luận -->
+    <div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="reportModalLabel">Báo cáo bình luận</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="report-form">
+                        <input type="hidden" name="comment_id" id="report-comment-id">
+                        <div class="mb-3">
+                            <label for="report-username" class="form-label">Người dùng</label>
+                            <input type="text" class="form-control" id="report-username" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="report-reason" class="form-label">Lý do báo cáo</label>
+                            <textarea class="form-control" id="report-reason" name="reason" rows="3" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-danger">Gửi báo cáo</button>
+                    </form>
+                    <div id="report-success" class="alert alert-success mt-2" style="display:none;">Đã gửi báo cáo thành công!</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    // Xử lý nút báo cáo bình luận
+    document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('report-comment-btn')) {
+    const commentId = e.target.getAttribute('data-id');
+    const username = e.target.getAttribute('data-username');
+    document.getElementById('report-comment-id').value = commentId;
+    document.getElementById('report-username').value = username;
+    document.getElementById('report-reason').value = '';
+    document.getElementById('report-success').style.display = 'none';
+    var modal = new bootstrap.Modal(document.getElementById('reportModal'));
+    modal.show();
+    }
+    });
+    // Xử lý gửi báo cáo qua AJAX
+    document.getElementById('report-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    fetch('report_comment.php', {
+    method: 'POST',
+    body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+    if (data.success) {
+    document.getElementById('report-success').style.display = '';
+    setTimeout(() => {
+    var modal = bootstrap.Modal.getInstance(document.getElementById('reportModal'));
+    modal.hide();
+    }, 1500);
+    }
+    });
+    });
     <style>
         .no-tag-text {
             color: #6c757d;

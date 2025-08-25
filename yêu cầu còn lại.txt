@@ -8,3 +8,8 @@ Sử dụng ô tìm kiếm ở header hay trong index đều phải đưa ngư�
 
 Nếu thấy bước trên quá phức tạp thì có thể loại bỏ search.php và thay vào đó là search_advanced.php để mỗi khi người dùng sử dụng nó ở Index hay header chỉ là tìm kiếm không có lọc (Tìm kiếm kiểu LIKE) để rồi sau khi submit thì người dùng được chuyển tới trang search_advanced.php! [Chỉ chọn một trong 2]
 
+Phản hồi đẩy comments lên đầu
+
+Sửa Header
+
+Sửa lại màu của profile

@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $file         = $_FILES['document'];
 
     // Lấy status_id của 'pending'
-    $stmt = $conn->prepare("SELECT status_id FROM document_status WHERE status_name='pending' LIMIT 1");
+    $stmt = $conn->prepare("SELECT status_id FROM statuses WHERE status_name='Pending' LIMIT 1");
     $stmt->execute();
     $status = $stmt->fetch(PDO::FETCH_ASSOC);
     $status_id = $status['status_id'] ?? 1;

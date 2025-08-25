@@ -111,13 +111,12 @@ if ($search !== '' || $subject || $department || $filetype || $sortby) {
     } else {
         // Có filter: Dùng logic đầy đủ với LIKE và filter
         $sql = "SELECT d.*, s.subject_name, s.department, u.username,
-                       COALESCE(AVG(r.rating),0) as avg_rating,
-                       SUM(CASE WHEN r.review_type = 'positive' THEN 1 ELSE 0 END) AS positive_count,
-                       SUM(CASE WHEN r.review_type = 'negative' THEN 1 ELSE 0 END) AS negative_count
-                FROM documents d
-                LEFT JOIN subjects s ON d.subject_id = s.subject_id
-                LEFT JOIN users u ON d.user_id = u.user_id
-                LEFT JOIN ratings r ON d.doc_id = r.doc_id
+               SUM(CASE WHEN rv.review_type = 'positive' THEN 1 ELSE 0 END) AS positive_count,
+               SUM(CASE WHEN rv.review_type = 'negative' THEN 1 ELSE 0 END) AS negative_count
+        FROM documents d
+        LEFT JOIN subjects s ON d.subject_id = s.subject_id
+        LEFT JOIN users u ON d.user_id = u.user_id
+        LEFT JOIN reviews rv ON d.doc_id = rv.doc_id
                 WHERE d.status_id=2";
         $params = [];
         if ($search) {
@@ -137,7 +136,7 @@ if ($search !== '' || $subject || $department || $filetype || $sortby) {
             $params[':filetype'] = $filetype;
         }
         $sql .= " GROUP BY d.doc_id";
-        if ($sortby === 'likes') $sql .= " ORDER BY d.likes DESC";
+        if ($sortby === 'likes') $sql .= " ORDER BY positive_count DESC";
         elseif ($sortby === 'views') $sql .= " ORDER BY d.views DESC";
         elseif ($sortby === 'downloads') $sql .= " ORDER BY d.downloads DESC";
         else $sql .= " ORDER BY d.upload_date DESC";

@@ -98,7 +98,7 @@ if ($user['user_id'] == $_SESSION['user_id']) {
                             <span class="badge bg-warning ms-2">Chưa xác thực</span>
                         <?php endif; ?>
                     <?php else: ?>
-                        <span class="text-muted">(Ẩn)</span>
+                        <span class="text-secondary">(Ẩn)</span>
                     <?php endif; ?>
                 </div>
                 <div class="mb-3">
@@ -117,9 +117,9 @@ if ($user['user_id'] == $_SESSION['user_id']) {
                 <div class="mb-3">
                     <strong>Ngày sinh:</strong>
                     <?php if ($can_show_birthday): ?>
-                        <?= !empty($user['birthday']) ? date('d/m/Y', strtotime($user['birthday'])) : '<span class="text-muted">Chưa cập nhật</span>' ?>
+                        <?= !empty($user['birthday']) ? date('d/m/Y', strtotime($user['birthday'])) : '<span class="text-secondary">Chưa cập nhật</span>' ?>
                     <?php else: ?>
-                        <span class="text-muted">(Ẩn)</span>
+                        <span class="text-light">(Ẩn)</span>
                     <?php endif; ?>
                 </div>
                 <div class="mb-3">
@@ -129,10 +129,10 @@ if ($user['user_id'] == $_SESSION['user_id']) {
                         if ($user['gender'] === 'male') echo 'Nam';
                         elseif ($user['gender'] === 'female') echo 'Nữ';
                         elseif ($user['gender'] === 'other') echo 'Khác';
-                        else echo '<span class="text-muted">Chưa cập nhật</span>';
+                        else echo '<span class="text-secondary">Chưa cập nhật</span>';
                         ?>
                     <?php else: ?>
-                        <span class="text-muted">(Ẩn)</span>
+                        <span class="text-secondary">(Ẩn)</span>
                     <?php endif; ?>
                 </div>
                 <div class="mb-3">
@@ -141,7 +141,7 @@ if ($user['user_id'] == $_SESSION['user_id']) {
                         <?php if (!empty($user['facebook'])): ?>
                             <a href="<?= htmlspecialchars($user['facebook']) ?>" target="_blank" rel="noopener" class="text-primary">Facebook cá nhân</a>
                         <?php else: ?>
-                            <span class="text-muted">Chưa liên kết</span>
+                            <span class="text-secondary">Chưa liên kết</span>
                         <?php endif; ?>
                     <?php else: ?>
                         <span class="text-muted">(Ẩn)</span>
