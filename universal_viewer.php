@@ -57,5 +57,3 @@ $file_url = 'https://yourdomain.com/' . $file; // đổi sang URL thực tế
         <?php endif; ?>
     </div>
 </div>
-
-<?php include 'includes/footer.php'; ?>

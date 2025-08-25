@@ -1,0 +1,10 @@
+Thêm tính năng tìm kiếm nâng cao! Tìm theo TAgs, bỏ định dạng (PDF,..) [Có thể bỏ ai ở đây]
+
+Thêm AI tóm tắt! (Đưa file pdf, docx,.. về text và đưa vào AI tóm tắt!)
+
+Kết quả tìm kiếm năng cao lỗi! Cần sửa lỗi hiển thị sao cho các tài liệu hiển thị giống với trong index/documents.php
+
+Sử dụng ô tìm kiếm ở header hay trong index đều phải đưa người dùng tới search_advanced.php với kết quả như đang tìm kiếm kiểu LIKE (kiểu tìm kiếm theo từ khóa), sau dó người dùng có thể sử dụng tính năng tìm kiếm lọc thì sẽ áp dụng thêm sau!
+
+Nếu thấy bước trên quá phức tạp thì có thể loại bỏ search.php và thay vào đó là search_advanced.php để mỗi khi người dùng sử dụng nó ở Index hay header chỉ là tìm kiếm không có lọc (Tìm kiếm kiểu LIKE) để rồi sau khi submit thì người dùng được chuyển tới trang search_advanced.php! [Chỉ chọn một trong 2]
+
