@@ -1,4 +1,6 @@
 <?php
+// ====== BẮT BUỘC LUÔN ĐẦU FILE ======
+ob_start();
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -13,6 +15,12 @@ if (session_status() === PHP_SESSION_NONE) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <style>
+        /* Chừa khoảng cho navbar fixed-top */
+        body {
+            padding-top: 70px;
+            /* = chiều cao navbar (56px default Bootstrap, tăng thêm để an toàn) */
+        }
+
         /* Animation chuông rung */
         .bell-animate {
             animation: bell-shake 0.7s cubic-bezier(.36, .07, .19, .97) both;
@@ -144,24 +152,19 @@ if (session_status() === PHP_SESSION_NONE) {
             <!-- Logo -->
             <a class="navbar-brand fw-bold me-3" href="index.php">StudyShare</a>
 
-            <!-- Ô tìm kiếm (nằm ngang với logo và menu, không bị kéo lên/xuống) -->
-            <form class="d-flex search-box flex-grow-1 mx-3 d-none d-lg-flex" role="search" action="search.php" method="get">
-                <input
-                    class="form-control form-control-sm me-2"
-                    type="search"
-                    name="q"
-                    placeholder="Tìm tài liệu..."
-                    aria-label="Search">
+            <!-- Ô tìm kiếm lớn -->
+            <form class="d-flex search-box flex-grow-1 mx-3 d-none d-lg-flex" role="search" action="search_advanced.php" method="get">
+                <input class="form-control form-control-sm me-2" type="search" name="q" placeholder="Tìm tài liệu..." aria-label="Search">
                 <button class="btn btn-sm btn-outline-light" type="submit">🔍</button>
             </form>
 
-            <!-- Nút thu gọn menu (hiện trên mobile) -->
+            <!-- Nút menu mobile -->
             <button class="navbar-toggler ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Menu">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
-            <!-- Các mục menu -->
+            <!-- Menu chính -->
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-lg-center">
                     <li class="nav-item"><a class="nav-link" href="index.php">🏠 Trang chủ</a></li>
@@ -175,16 +178,9 @@ if (session_status() === PHP_SESSION_NONE) {
                         require_once 'includes/db.php';
                         $notifications_count = 0;
                         if ($_SESSION['role'] === 'admin') {
-                            // Thông báo duyệt tài liệu
-                            $stmt = $conn->query("SELECT COUNT(*) FROM documents WHERE status_id=1");
-                            $pending_docs = $stmt->fetchColumn();
-                            // Thông báo báo cáo vi phạm
-                            $stmt = $conn->query("SELECT COUNT(*) FROM reports WHERE status='pending'");
-                            $pending_reports = $stmt->fetchColumn();
-                            // Thông báo bình luận bị report
-                            $stmt = $conn->query("SELECT COUNT(*) FROM comments WHERE reported=1");
-                            $reported_comments = $stmt->fetchColumn();
-                            // Tổng thông báo
+                            $pending_docs = $conn->query("SELECT COUNT(*) FROM documents WHERE status_id=1")->fetchColumn();
+                            $pending_reports = $conn->query("SELECT COUNT(*) FROM reports WHERE status='pending'")->fetchColumn();
+                            $reported_comments = $conn->query("SELECT COUNT(*) FROM comments WHERE reported=1")->fetchColumn();
                             $notifications_count = $pending_docs + $pending_reports + $reported_comments;
                         } else {
                             $stmt = $conn->prepare("SELECT COUNT(*) FROM notifications WHERE user_id=? AND is_read=0");
@@ -200,18 +196,16 @@ if (session_status() === PHP_SESSION_NONE) {
                                 <?= htmlspecialchars($display_name) ?>
                                 <span class="ms-2 bell-icon<?= ($notifications_count > 0 ? ' bell-animate' : '') ?>" id="dropdown-bell">🔔</span>
                                 <?php if ($notifications_count > 0): ?>
-                                    <span class="badge bg-danger position-absolute" style="top:8px; right:2px; z-index:2;"><?= $notifications_count ?></span>
+                                    <span class="badge bg-danger position-absolute" style="top:8px; right:2px;"><?= $notifications_count ?></span>
                                 <?php endif; ?>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" style="min-width:260px;">
-                                <!-- Removed gray 'Thông báo' header and divider for cleaner dropdown -->
-                                <li><a class="dropdown-item" href="profile.php?user=<?= htmlspecialchars($user['username'] ?? $_SESSION['username']) ?>">👤 Trang cá nhân</a></li>
+                                <li><a class="dropdown-item" href="profile.php?user=<?= htmlspecialchars($_SESSION['username']) ?>">👤 Trang cá nhân</a></li>
                                 <li><a class="dropdown-item" href="settings_profile.php">⚙️ Cài đặt tài khoản</a></li>
                                 <li><a class="dropdown-item" href="my_documents.php">📄 Quản lý tài liệu</a></li>
 
-                                <?php if ($_SESSION['role'] !== 'admin'): ?>
-                                <?php else: ?>
-                                    <li><a class="dropdown-item" href="notifications.php">🔔 Thông báo <?php if ($notifications_count > 0) echo "($notifications_count)"; ?></a></li>
+                                <?php if ($_SESSION['role'] === 'admin'): ?>
+                                    <li><a class="dropdown-item" href="notifications.php">🔔 Thông báo (<?= $notifications_count ?>)</a></li>
                                     <li><a class="dropdown-item" href="user.php">👥 Quản lý tài khoản</a></li>
                                     <li><a class="dropdown-item text-warning" href="ai_logs.php">📜 AI Logs</a></li>
                                     <li><a class="dropdown-item" href="downloads.php">📥 Lịch sử tải về</a></li>
@@ -225,15 +219,15 @@ if (session_status() === PHP_SESSION_NONE) {
                         <li class="nav-item"><a class="nav-link" href="register.php">📝 Đăng ký</a></li>
                     <?php endif; ?>
 
-                    <!-- Ô tìm kiếm cho mobile (hiện khi mở menu) -->
+                    <!-- Ô tìm kiếm cho mobile -->
                     <li class="nav-item d-lg-none mt-2">
-                        <form class="d-flex search-box" role="search" action="search.php" method="get">
+                        <form class="d-flex search-box" role="search" action="search_advanced.php" method="get">
                             <input class="form-control form-control-sm me-2" type="search" name="q" placeholder="Tìm tài liệu..." aria-label="Search">
                             <button class="btn btn-sm btn-outline-light" type="submit">🔍</button>
                         </form>
                     </li>
 
-                    <!-- Nút dark mode (luôn ở cuối menu trên mobile, bên phải header trên PC) -->
+                    <!-- Nút dark mode -->
                     <li class="nav-item ms-lg-3 mt-2 mt-lg-0">
                         <button id="theme-toggle" class="btn btn-sm btn-light">🌙</button>
                     </li>
@@ -243,22 +237,20 @@ if (session_status() === PHP_SESSION_NONE) {
     </nav>
 
     <script>
-        // Hiệu ứng chuông rung khi có thông báo mới
+        // Hiệu ứng chuông
         document.addEventListener('DOMContentLoaded', function() {
             var bell = document.querySelector('.bell-icon');
             if (bell && bell.classList.contains('bell-animate')) {
-                setTimeout(function() {
-                    bell.classList.remove('bell-animate');
-                }, 1200);
+                setTimeout(() => bell.classList.remove('bell-animate'), 1200);
             }
         });
+        // Dark mode toggle
         document.addEventListener('DOMContentLoaded', function() {
             const toggleBtn = document.getElementById('theme-toggle');
             if (localStorage.getItem('dark-mode') === 'true') {
                 document.body.classList.add('dark-mode');
                 toggleBtn.textContent = '☀️';
             }
-
             toggleBtn.addEventListener('click', () => {
                 document.body.classList.toggle('dark-mode');
                 const isDark = document.body.classList.contains('dark-mode');
@@ -268,5 +260,5 @@ if (session_status() === PHP_SESSION_NONE) {
         });
     </script>
 
-    <!-- Thêm khoảng trống phía trên để tránh bị che bởi navbar cố định -->
+    <!-- Mở main ở đây, khi include footer sẽ đóng -->
     <main class="container my-4">

@@ -18,7 +18,7 @@ include 'includes/header.php';
     <!-- Form tìm kiếm -->
     <div class="mb-5">
         <h3>Tìm kiếm tài liệu</h3>
-        <form action="search.php" method="get" class="input-group">
+        <form action="search_advanced.php" method="get" class="input-group">
             <input
                 type="text"
                 name="q"

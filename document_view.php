@@ -1,10 +1,10 @@
 <?php
+include 'includes/db.php';
 include 'includes/header.php';
 date_default_timezone_set('Asia/Ho_Chi_Minh');
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-include 'includes/db.php';
 
 $doc_id = (int)($_POST['doc_id'] ?? $_GET['id'] ?? 0);
 
@@ -382,7 +382,7 @@ foreach ($all_replies as $r) {
 }
 ?>
 
-<div class="container my-4 pt-5">
+<div class="container my-4">
     <div class="d-flex justify-content-between align-items-center mb-2">
         <h2 class="mb-0"><?= htmlspecialchars($doc['title'] ?? '') ?></h2>
 

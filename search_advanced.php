@@ -25,6 +25,7 @@ $departments = $conn->query("SELECT DISTINCT department FROM subjects WHERE depa
 
 // ====== FORM GIAO DIỆN (MỞ RỘNG VỚI FILTER) ======
 ?>
+<link rel="stylesheet" href="css/hover.css">
 <div class="container my-4">
     <h2 class="mb-3">Tìm kiếm nâng cao</h2>
     <form method="get" class="row g-3 mb-4">
@@ -187,26 +188,28 @@ if ($search !== '' || $subject || $department || $filetype || $sortby) {
     $total_reviews = ($row['positive_count'] ?? 0) + ($row['negative_count'] ?? 0);
     $review_summary = $total_reviews > 0 ? ($row['positive_count'] / $total_reviews >= 0.7 ? "Đánh giá tích cực" : ($row['positive_count'] / $total_reviews >= 0.4 ? "Đánh giá trung bình" : "Đánh giá tiêu cực")) : "Chưa có đánh giá";
     ?>
-    <a href="document_view.php?id=<?php echo $row['doc_id'] ?? 0; ?>" class="text-decoration-none text-dark">
-        <div class="card h-100 shadow-sm doc-card">
-            <div class="card-body d-flex flex-column">
-                <h5 class="card-title"><?php echo htmlspecialchars($row['title'] ?? ''); ?></h5>
-                <p class="card-text"><strong>Môn học:</strong> <?php echo htmlspecialchars($row['subject_name'] ?? ''); ?></p>
-                <p class="card-text"><strong>Người đăng:</strong> <?php echo htmlspecialchars($row['username'] ?? ''); ?></p>
-                <p class="card-text text-info">
-                    <strong>Đánh giá:</strong> <?php echo $review_summary; ?>
-                    (👍 <?php echo $row['positive_count'] ?? 0; ?> / 👎 <?php echo $row['negative_count'] ?? 0; ?>)
-                </p>
-                <p class="card-text"><strong>Lượt xem:</strong> <?php echo number_format($row['views'] ?? 0); ?></p>
-                <?php if (!empty($row['description'])): ?>
-                    <p class="card-text"><strong>Mô tả:</strong> <?php echo nl2br(htmlspecialchars($row['description'] ?? '')); ?></p>
-                <?php endif; ?>
+    <div class="col-md-6 col-lg-4 mb-4">
+        <a href="document_view.php?id=<?php echo $row['doc_id'] ?? 0; ?>" class="text-decoration-none text-dark">
+            <div class="card h-100 shadow-sm doc-card">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title"><?php echo htmlspecialchars($row['title'] ?? ''); ?></h5>
+                    <p class="card-text"><strong>Môn học:</strong> <?php echo htmlspecialchars($row['subject_name'] ?? ''); ?></p>
+                    <p class="card-text"><strong>Người đăng:</strong> <?php echo htmlspecialchars($row['username'] ?? ''); ?></p>
+                    <p class="card-text text-info">
+                        <strong>Đánh giá:</strong> <?php echo $review_summary; ?>
+                        (👍 <?php echo $row['positive_count'] ?? 0; ?> / 👎 <?php echo $row['negative_count'] ?? 0; ?>)
+                    </p>
+                    <p class="card-text"><strong>Lượt xem:</strong> <?php echo number_format($row['views'] ?? 0); ?></p>
+                    <?php if (!empty($row['description'])): ?>
+                        <p class="card-text"><strong>Mô tả:</strong> <?php echo nl2br(htmlspecialchars($row['description'] ?? '')); ?></p>
+                    <?php endif; ?>
+                </div>
+                <div class="card-footer small text-muted">
+                    Đăng ngày: <?php echo !empty($row['upload_date']) ? date("d/m/Y H:i", strtotime($row['upload_date'])) : ''; ?>
+                </div>
             </div>
-            <div class="card-footer small text-muted">
-                Đăng ngày: <?php echo !empty($row['upload_date']) ? date("d/m/Y H:i", strtotime($row['upload_date'])) : ''; ?>
-            </div>
-        </div>
-    </a>
+        </a>
+    </div>
 <?php endforeach; ?>
 
 <!-- Pagination -->
