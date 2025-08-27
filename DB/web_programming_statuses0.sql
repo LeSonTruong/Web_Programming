@@ -16,28 +16,27 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `tags`
+-- Table structure for table `statuses`
 --
 
-DROP TABLE IF EXISTS `tags`;
+DROP TABLE IF EXISTS `statuses`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `tags` (
-  `tag_id` int NOT NULL AUTO_INCREMENT,
-  `tag_name` varchar(50) NOT NULL,
-  PRIMARY KEY (`tag_id`),
-  UNIQUE KEY `tag_name` (`tag_name`)
-) ENGINE=InnoDB AUTO_INCREMENT=60 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE `statuses` (
+  `status_id` int NOT NULL AUTO_INCREMENT,
+  `status_name` varchar(50) NOT NULL,
+  PRIMARY KEY (`status_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `tags`
+-- Dumping data for table `statuses`
 --
 
-LOCK TABLES `tags` WRITE;
-/*!40000 ALTER TABLE `tags` DISABLE KEYS */;
-INSERT INTO `tags` VALUES (38,'Agile'),(11,'AI'),(57,'Algorithm'),(31,'Android'),(22,'Angular'),(9,'Backend'),(15,'Big Data'),(36,'Blockchain'),(5,'C++'),(43,'CI/CD'),(17,'Cloud'),(7,'Cơ sở dữ liệu'),(45,'CSS'),(14,'Data Science'),(58,'Data Structure'),(13,'Deep Learning'),(55,'Design Pattern'),(16,'DevOps'),(26,'Django'),(18,'Docker'),(50,'Firebase'),(27,'Flask'),(8,'Frontend'),(42,'Git'),(29,'GraphQL'),(44,'HTML'),(6,'Hướng dẫn'),(32,'iOS'),(37,'IoT'),(4,'Java'),(46,'JavaScript'),(49,'Jenkins'),(34,'Kotlin'),(19,'Kubernetes'),(1,'Lập trình'),(25,'Laravel'),(12,'Machine Learning'),(30,'Mobile'),(51,'MongoDB'),(52,'MySQL'),(23,'NodeJS'),(54,'NoSQL'),(56,'OOP'),(10,'PHP'),(53,'PostgreSQL'),(3,'Python'),(20,'React'),(28,'REST API'),(39,'Scrum'),(35,'Security'),(48,'Selenium'),(24,'Spring'),(33,'Swift'),(40,'Testing'),(47,'TypeScript'),(41,'Unit Test'),(21,'Vue'),(2,'Web');
-/*!40000 ALTER TABLE `tags` ENABLE KEYS */;
+LOCK TABLES `statuses` WRITE;
+/*!40000 ALTER TABLE `statuses` DISABLE KEYS */;
+INSERT INTO `statuses` VALUES (1,'Pending'),(2,'Approved'),(3,'Rejected');
+/*!40000 ALTER TABLE `statuses` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -49,4 +48,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-25  8:08:02
+-- Dump completed on 2025-08-27 10:38:43

@@ -16,27 +16,30 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `statuses`
+-- Table structure for table `document_tags`
 --
 
-DROP TABLE IF EXISTS `statuses`;
+DROP TABLE IF EXISTS `document_tags`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `statuses` (
-  `status_id` int NOT NULL AUTO_INCREMENT,
-  `status_name` varchar(50) NOT NULL,
-  PRIMARY KEY (`status_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE `document_tags` (
+  `doc_id` int NOT NULL,
+  `tag_id` int NOT NULL,
+  PRIMARY KEY (`doc_id`,`tag_id`),
+  KEY `tag_id` (`tag_id`),
+  CONSTRAINT `document_tags_ibfk_1` FOREIGN KEY (`doc_id`) REFERENCES `documents` (`doc_id`) ON DELETE CASCADE,
+  CONSTRAINT `document_tags_ibfk_2` FOREIGN KEY (`tag_id`) REFERENCES `tags` (`tag_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `statuses`
+-- Dumping data for table `document_tags`
 --
 
-LOCK TABLES `statuses` WRITE;
-/*!40000 ALTER TABLE `statuses` DISABLE KEYS */;
-INSERT INTO `statuses` VALUES (1,'Pending'),(2,'Approved'),(3,'Rejected');
-/*!40000 ALTER TABLE `statuses` ENABLE KEYS */;
+LOCK TABLES `document_tags` WRITE;
+/*!40000 ALTER TABLE `document_tags` DISABLE KEYS */;
+INSERT INTO `document_tags` VALUES (9,1),(10,1),(10,2),(9,3),(10,10),(9,11),(9,12);
+/*!40000 ALTER TABLE `document_tags` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -48,4 +51,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-25  8:08:02
+-- Dump completed on 2025-08-27 10:38:43

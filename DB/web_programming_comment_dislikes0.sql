@@ -16,32 +16,32 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `comment_likes`
+-- Table structure for table `comment_dislikes`
 --
 
-DROP TABLE IF EXISTS `comment_likes`;
+DROP TABLE IF EXISTS `comment_dislikes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `comment_likes` (
-  `like_id` int NOT NULL AUTO_INCREMENT,
+CREATE TABLE `comment_dislikes` (
+  `id` int NOT NULL AUTO_INCREMENT,
   `comment_id` int NOT NULL,
   `user_id` int NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`like_id`),
-  UNIQUE KEY `comment_id` (`comment_id`,`user_id`),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_dislike` (`comment_id`,`user_id`),
   KEY `user_id` (`user_id`),
-  CONSTRAINT `comment_likes_ibfk_1` FOREIGN KEY (`comment_id`) REFERENCES `comments` (`comment_id`) ON DELETE CASCADE,
-  CONSTRAINT `comment_likes_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+  CONSTRAINT `comment_dislikes_ibfk_1` FOREIGN KEY (`comment_id`) REFERENCES `comments` (`comment_id`) ON DELETE CASCADE,
+  CONSTRAINT `comment_dislikes_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `comment_likes`
+-- Dumping data for table `comment_dislikes`
 --
 
-LOCK TABLES `comment_likes` WRITE;
-/*!40000 ALTER TABLE `comment_likes` DISABLE KEYS */;
-/*!40000 ALTER TABLE `comment_likes` ENABLE KEYS */;
+LOCK TABLES `comment_dislikes` WRITE;
+/*!40000 ALTER TABLE `comment_dislikes` DISABLE KEYS */;
+/*!40000 ALTER TABLE `comment_dislikes` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -53,4 +53,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-25  8:08:02
+-- Dump completed on 2025-08-27 10:38:43

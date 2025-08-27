@@ -51,7 +51,7 @@ CREATE TABLE `users` (
   `upload_locked` tinyint(1) DEFAULT '0',
   PRIMARY KEY (`user_id`),
   UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -60,7 +60,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'Lê Sơn Trường','LeSonTruong','LeSonTruong@icloud.com','$2y$12$6/Qod9SGmY03ikJ8B4zuYeANHC0/jSgdQg5jkvDoeHFqPOHCpBkqG','admin','2025-08-21 05:01:26','Lê Sơn Trường','2025-08-21 12:01:59','default.png','0967602973',NULL,NULL,NULL,1,1,1,1,1,NULL,NULL,'650623',0,0,0,0),(2,'Nguyễn Việt Hòa','NguyenVietHoa','nguyenviethoa2903@gmail.com','$2y$12$jp2/3z6kW9mPeQdcZuASy.JmKEAtzJ4W5nGGPxKaXcnPnR5La8Jnu','user','2025-08-21 05:02:33','NHƯ CON CẶC','2025-08-21 19:48:07','default.png',NULL,NULL,NULL,NULL,1,1,1,1,1,NULL,NULL,'944303',0,0,0,0);
+INSERT INTO `users` VALUES (1,'Lê Sơn Trường','LeSonTruong','LeSonTruong@icloud.com','$2y$12$6/Qod9SGmY03ikJ8B4zuYeANHC0/jSgdQg5jkvDoeHFqPOHCpBkqG','admin','2025-08-21 05:01:26','Lê Sơn Trường','2025-08-21 12:01:59','default.png','0967602973',NULL,NULL,NULL,1,1,1,1,1,NULL,NULL,'650623',0,0,0,0),(2,'Nguyễn Việt Hòa','NguyenVietHoa','nguyenviethoa2903@gmail.com','$2y$12$jp2/3z6kW9mPeQdcZuASy.JmKEAtzJ4W5nGGPxKaXcnPnR5La8Jnu','user','2025-08-21 05:02:33','NHƯ CON CẶC','2025-08-21 19:48:07','default.png',NULL,NULL,NULL,NULL,1,1,1,1,1,NULL,NULL,'944303',0,0,0,0),(3,'Nguyễn Huy Kiên','NguyenHuyKien','nguyenkien7901@gmail.com','$2y$12$x8wQv6C0NnEVBo0fDpuxFeZqZTIZU/14fS35fPgTCtQfjdhujtbZe','user','2025-08-25 05:23:04',NULL,NULL,'default.png',NULL,NULL,NULL,NULL,1,1,1,1,1,NULL,NULL,NULL,0,0,0,0);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -73,4 +73,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-25  8:08:02
+-- Dump completed on 2025-08-27 10:38:43

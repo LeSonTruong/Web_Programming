@@ -57,7 +57,7 @@ CREATE TABLE `documents` (
 
 LOCK TABLES `documents` WRITE;
 /*!40000 ALTER TABLE `documents` DISABLE KEYS */;
-INSERT INTO `documents` VALUES (9,'Mô hình thử nghiệm các Agents khác nhau','Lê Sơn Trường','','uploads/68a94b8c8f217.ipynb','assets/icons/file.png',122296,'code','2025-08-23 05:03:08','2025-08-24 16:59:07',84,'AI, Lập trình',1,2,1,0,''),(10,'PHP - Chủ đề bài tập lớn','Hòa','','uploads/68a9d6317b2c0.pdf','assets/icons/file.png',176066,'pdf','2025-08-23 14:54:41','2025-08-24 16:59:53',33,'Web, Lập trình',2,2,1,0,'');
+INSERT INTO `documents` VALUES (9,'Mô hình thử nghiệm các Agents khác nhau','Lê Sơn Trường','','uploads/68a94b8c8f217.ipynb','assets/icons/file.png',122296,'code','2025-08-23 05:03:08','2025-08-27 03:35:39',84,'AI, Lập trình',1,2,42,0,''),(10,'PHP - Chủ đề bài tập lớn','Hòa','','uploads/68a9d6317b2c0.pdf','assets/icons/file.png',176066,'pdf','2025-08-23 14:54:41','2025-08-26 21:48:21',33,'Web, Lập trình',2,2,9,0,'');
 /*!40000 ALTER TABLE `documents` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -70,4 +70,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-25  8:08:01
+-- Dump completed on 2025-08-27 10:38:43
