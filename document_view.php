@@ -588,21 +588,23 @@ foreach ($all_replies as $r) {
                 }
             }
 
-            function sendReview(type) {
+            function sendReview(type, undo = false) {
+                let reviewType = type;
+                if (undo) reviewType = 'none';
                 fetch('review.php', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',
                             'X-Requested-With': 'XMLHttpRequest'
                         },
-                        body: 'doc_id=' + encodeURIComponent(docId) + '&review_type=' + encodeURIComponent(type)
+                        body: 'doc_id=' + encodeURIComponent(docId) + '&review_type=' + encodeURIComponent(reviewType)
                     })
                     .then(res => res.json())
                     .then(data => {
                         if (data.success) {
                             likeCount.textContent = data.positive_count;
                             dislikeCount.textContent = data.negative_count;
-                            userReviewType = type;
+                            userReviewType = (reviewType === 'none') ? '' : type;
                             updateButtonState();
                             // Tính lại review_summary
                             const total = data.positive_count + data.negative_count;
@@ -618,10 +620,20 @@ foreach ($all_replies as $r) {
                     });
             }
             if (likeBtn) likeBtn.onclick = function() {
-                if (userReviewType !== 'positive') sendReview('positive');
+                if (userReviewType === 'positive') {
+                    // Undo like
+                    sendReview('positive', true);
+                } else {
+                    sendReview('positive');
+                }
             };
             if (dislikeBtn) dislikeBtn.onclick = function() {
-                if (userReviewType !== 'negative') sendReview('negative');
+                if (userReviewType === 'negative') {
+                    // Undo dislike
+                    sendReview('negative', true);
+                } else {
+                    sendReview('negative');
+                }
             };
             updateButtonState();
         });
@@ -1008,23 +1020,41 @@ foreach ($all_replies as $r) {
                     mainTags.style.display = '';
                 });
             }
-            // Hiện form thêm tag
-            // Đã xử lý ở trên, xóa đoạn trùng lặp này
-            // Xử lý dislike bình luận
-            document.querySelectorAll('.dislike-comment-btn').forEach(btn => {
+            // AJAX like/dislike comment
+            document.querySelectorAll('.like-comment-btn, .dislike-comment-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const commentId = this.dataset.id;
-                    fetch('dislike_comment.php', {
+                    const type = this.classList.contains('like-comment-btn') ? 'like' : 'dislike';
+                    const commentCard = this.closest('.card');
+                    const likeBtn = commentCard ? commentCard.querySelector('.like-comment-btn') : null;
+                    const dislikeBtn = commentCard ? commentCard.querySelector('.dislike-comment-btn') : null;
+                    fetch('review_comment.php', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/x-www-form-urlencoded'
                             },
-                            body: 'comment_id=' + encodeURIComponent(commentId)
+                            body: 'comment_id=' + encodeURIComponent(commentId) + '&type=' + encodeURIComponent(type)
                         })
                         .then(res => res.json())
                         .then(data => {
-                            if (data.count !== undefined) {
-                                this.querySelector('.dislike-count').textContent = data.count;
+                            if (likeBtn && dislikeBtn) {
+                                likeBtn.querySelector('.like-count').textContent = data.like_count;
+                                dislikeBtn.querySelector('.dislike-count').textContent = data.dislike_count;
+                                if (data.type === 'like') {
+                                    if (data.action === 'like') {
+                                        likeBtn.classList.add('active');
+                                        dislikeBtn.classList.remove('active');
+                                    } else {
+                                        likeBtn.classList.remove('active');
+                                    }
+                                } else if (data.type === 'dislike') {
+                                    if (data.action === 'dislike') {
+                                        dislikeBtn.classList.add('active');
+                                        likeBtn.classList.remove('active');
+                                    } else {
+                                        dislikeBtn.classList.remove('active');
+                                    }
+                                }
                             }
                         });
                 });
