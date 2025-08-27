@@ -19,13 +19,14 @@ $behaviors = [
     'Hành vi khác',
 ];
 
-// Xử lý gửi báo cáo
-$success = false;
+// Lấy tên người dùng bị báo cáo từ URL nếu có
+$reported_user = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
     $reported_user = trim($_POST['reported_user'] ?? '');
     $reason = trim($_POST['reason'] ?? '');
     $behavior = trim($_POST['behavior'] ?? '');
     $evidence = trim($_POST['evidence'] ?? '');
+    $success = false;
     if ($reported_user && $reason && $behavior) {
         $stmt = $conn->prepare("INSERT INTO reports (reporter_id, reported_user, reason, behavior, evidence) VALUES (?, ?, ?, ?, ?)");
         $stmt->execute([
@@ -37,11 +38,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
         ]);
         $success = true;
     }
+} else {
+    $reported_user = trim($_GET['reported_user'] ?? '');
 }
 ?>
 <div class="container my-5">
     <h2 class="mb-4">Báo cáo người dùng vi phạm</h2>
-    <?php if ($success): ?>
+    <?php if (isset($success) && $success): ?>
         <div class="alert alert-success">Đã gửi báo cáo thành công! Admin sẽ xem xét và xử lý.</div>
     <?php endif; ?>
     <?php if (!isset($_SESSION['user_id'])): ?>
@@ -50,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
         <form method="post" class="row g-3">
             <div class="col-md-6">
                 <label for="reported_user" class="form-label">Tên người dùng bị báo cáo</label>
-                <input type="text" class="form-control" id="reported_user" name="reported_user" required placeholder="Nhập username hoặc tên hiển thị">
+                <input type="text" class="form-control" id="reported_user" name="reported_user" required placeholder="Nhập username hoặc tên hiển thị" value="<?= htmlspecialchars($reported_user) ?>">
             </div>
             <div class="col-md-6">
                 <label for="behavior" class="form-label">Hành vi vi phạm</label>

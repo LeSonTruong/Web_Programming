@@ -795,7 +795,7 @@ foreach ($all_replies as $r) {
                         <button class="btn btn-sm btn-outline-primary like-comment-btn" data-id="<?= $c['comment_id'] ?>">👍 <span class="like-count"><?= $c['like_count'] ?></span></button>
                         <button class="btn btn-sm btn-outline-danger dislike-comment-btn" data-id="<?= $c['comment_id'] ?>">👎 <span class="dislike-count"><?= $c['dislike_count'] ?? 0 ?></span></button>
                         <button class="btn btn-sm btn-outline-secondary reply-comment-btn" data-id="<?= $c['comment_id'] ?>">↩️ Phản hồi</button>
-                        <button class="btn btn-sm btn-outline-warning report-comment-btn" data-id="<?= $c['comment_id'] ?>" data-username="<?= htmlspecialchars($c['username']) ?>">🚩 Báo cáo</button>
+                        <a href="report.php?reported_user=<?= urlencode($c['username']) ?>" class="btn btn-sm btn-outline-warning">🚩 Báo cáo</a>
                         <?php
                         // Tìm reply mới nhất cho comment này
                         $latest_reply = null;
