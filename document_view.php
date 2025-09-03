@@ -887,38 +887,7 @@ foreach ($all_replies as $r) {
             </div>
         </div>
     </div>
-    // Xử lý nút báo cáo bình luận
-    document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('report-comment-btn')) {
-    const commentId = e.target.getAttribute('data-id');
-    const username = e.target.getAttribute('data-username');
-    document.getElementById('report-comment-id').value = commentId;
-    document.getElementById('report-username').value = username;
-    document.getElementById('report-reason').value = '';
-    document.getElementById('report-success').style.display = 'none';
-    var modal = new bootstrap.Modal(document.getElementById('reportModal'));
-    modal.show();
-    }
-    });
-    // Xử lý gửi báo cáo qua AJAX
-    document.getElementById('report-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(this);
-    fetch('report_comment.php', {
-    method: 'POST',
-    body: formData
-    })
-    .then(res => res.json())
-    .then(data => {
-    if (data.success) {
-    document.getElementById('report-success').style.display = '';
-    setTimeout(() => {
-    var modal = bootstrap.Modal.getInstance(document.getElementById('reportModal'));
-    modal.hide();
-    }, 1500);
-    }
-    });
-    });
+
     <style>
         .no-tag-text {
             color: #6c757d;
