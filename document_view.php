@@ -556,7 +556,10 @@ foreach ($all_replies as $r) {
     <p><strong>Đánh giá:</strong> <span id="review-summary-text"><?= $review_summary ?></span> (👍 <span id="like-count"><?= $doc['positive_count'] ?? 0 ?></span> | 👎 <span id="dislike-count"><?= $doc['negative_count'] ?? 0 ?></span>)</p>
     <p><strong>Lượt xem:</strong> <?= number_format($doc['views'] ?? 0) ?></p>
     <p><strong>Lượt tải:</strong> <?= $total_downloads ?></p>
-
+    <p><strong>Ngày đăng:</strong> <?= date('d/m/Y H:i', strtotime($doc['upload_date'])) ?></p>
+<?php if (!empty($doc['update_at'])): ?>
+    <p><strong>Đã chỉnh sửa:</strong> <?= date('d/m/Y H:i', strtotime($doc['update_at'])) ?></p>
+<?php endif; ?>
     <!-- Nút đánh giá AJAX -->
     <div class="mb-3">
         <?php if (isset($_SESSION['user_id'])): ?>
