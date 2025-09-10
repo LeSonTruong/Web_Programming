@@ -68,12 +68,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Nếu chưa có lỗi, xử lý file upload
     if (!$error) {
         // Các định dạng được phép upload (PDF, ảnh, file code)
+        // Danh sách định dạng được hỗ trợ hiển thị trực tiếp
         $allowed_types = [
             'pdf',
             'jpg',
             'jpeg',
             'png',
             'gif',
+            'bmp',
+            'webp',
             // Các file code
             'ipynb',
             'py',
@@ -86,8 +89,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             'json',
             'rb',
             'go',
-            'ts'
+            'ts',
+            'php'
         ];
+
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+        // Nếu là file Office thì chặn và hướng dẫn người dùng convert trước
+        if (in_array($ext, ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'])) {
+            $error = "❌ Định dạng <b>.$ext</b> không hỗ trợ xem trực tiếp. 
+              Vui lòng <b>convert sang PDF</b> trước khi tải lên.";
+        } elseif (!in_array($ext, $allowed_types)) {
+            $error = "❌ Định dạng file không được hỗ trợ.";
+        } elseif ($file['size'] > 20 * 1024 * 1024) {
+            $error = "❌ File quá lớn, tối đa 20MB.";
+        } else {
+            // ... giữ nguyên phần xử lý upload cũ
+        }
 
         // Các định dạng Office bị chặn — bắt người dùng convert sang PDF trước khi upload
         $blocked_office = ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'];
