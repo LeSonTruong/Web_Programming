@@ -15,11 +15,16 @@ if (!$doc) {
     exit;
 }
 
-$file = $doc['file_path'];
-$ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-$title = htmlspecialchars($doc['title']);
+$file       = $doc['file_path'];
+$ext        = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+$title      = htmlspecialchars($doc['title']);
 $description = nl2br(htmlspecialchars($doc['description']));
-$file_url = 'https://yourdomain.com/' . $file; // đổi sang URL thực tế
+$file_url   = 'https://yourdomain.com/' . ltrim($file, '/'); // đổi sang domain thực tế
+
+// Kiểm tra xem có bản convert PDF không
+$converted_pdf = 'uploads/converted/' . pathinfo($file, PATHINFO_FILENAME) . '.pdf';
+$converted_pdf_url = 'https://yourdomain.com/' . ltrim($converted_pdf, '/');
+$has_converted_pdf = file_exists($converted_pdf);
 ?>
 
 <div class="container my-4">
@@ -30,15 +35,30 @@ $file_url = 'https://yourdomain.com/' . $file; // đổi sang URL thực tế
 
     <div class="file-viewer my-3" style="min-height: 600px;">
         <?php
-        // PDF
-        if ($ext === 'pdf'):
+        // Ưu tiên hiển thị file đã convert sang PDF
+        if ($has_converted_pdf):
+        ?>
+            <embed src="<?= htmlspecialchars($converted_pdf) ?>" type="application/pdf" width="100%" height="600px" />
+        <?php
+        // PDF gốc
+        elseif ($ext === 'pdf'):
         ?>
             <embed src="<?= htmlspecialchars($file) ?>" type="application/pdf" width="100%" height="600px" />
         <?php
-        // Office files
+        // Office files (Word, Excel, PowerPoint)
         elseif (in_array($ext, ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'])):
         ?>
-            <iframe src="https://view.officeapps.live.com/op/embed.aspx?src=<?= urlencode($file_url) ?>" width="100%" height="600px" frameborder="0"></iframe>
+            <!-- Thử Office Online Viewer -->
+            <iframe id="officeViewer"
+                src="https://view.officeapps.live.com/op/embed.aspx?src=<?= urlencode($file_url) ?>"
+                width="100%" height="600px" frameborder="0"></iframe>
+
+            <script>
+                // Nếu Office Viewer lỗi -> fallback sang Google Docs Viewer
+                document.getElementById('officeViewer').addEventListener('error', function() {
+                    this.src = "https://docs.google.com/viewer?url=<?= urlencode($file_url) ?>&embedded=true";
+                });
+            </script>
         <?php
         // Images
         elseif (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'])):
@@ -50,9 +70,10 @@ $file_url = 'https://yourdomain.com/' . $file; // đổi sang URL thực tế
         ?>
             <iframe src="code_viewer.php?file=<?= urlencode($file) ?>" width="100%" height="600px" frameborder="0"></iframe>
         <?php
+        // Khác
         else:
         ?>
-            <p>📄 File không thể xem trực tiếp. Vui lòng tải xuống để mở.</p>
+            <p>📄 File này không thể xem trực tiếp. Vui lòng tải xuống để mở.</p>
             <a href="download.php?id=<?= $doc['doc_id'] ?>" class="btn btn-primary">📥 Tải xuống</a>
         <?php endif; ?>
     </div>
