@@ -114,7 +114,7 @@ $docs = $conn->query("
                             <?php endif; ?>
                         </div>
                         <div class="card-footer d-flex justify-content-between">
-                            <a href="<?= htmlspecialchars($doc['file_path']) ?>" target="_blank" class="btn btn-info btn-sm">Xem/Tải</a>
+                            <a href="document_view.php?id=<?= $doc['doc_id'] ?>" target="_blank" class="btn btn-info btn-sm">Xem tài liệu</a>
                             <div>
                                 <a href="?approve=<?= $doc['doc_id'] ?>" class="btn btn-success btn-sm">Duyệt</a>
                                 <a href="?reject=<?= $doc['doc_id'] ?>" class="btn btn-danger btn-sm">Từ chối</a>

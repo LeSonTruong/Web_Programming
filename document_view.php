@@ -274,9 +274,8 @@ $stmt = $conn->prepare("
 $stmt->execute([$doc_id]);
 $doc = $stmt->fetch();
 
-if (!$doc) {
-    echo "<div class='container my-5 alert alert-danger'>❌ Không tìm thấy tài liệu!</div>";
-    include 'includes/footer.php';
+if ((!$doc) or (($doc['status_id'] != 2) and (!isset($_SESSION['role']) || $_SESSION['role'] != 'admin'))) {
+    header("Location: not_found");
     exit;
 }
 
@@ -297,7 +296,7 @@ $total_downloads = $downloadData['total_downloads'] ?? 0;
 // ===== XÁC ĐỊNH LOẠI FILE =====
 $file = $doc['file_path'] ?? '';
 $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-$file_url = 'https://yourdomain.com/' . $file; // đổi sang URL thực tế
+$file_url = 'https://studyshare.banhgao.net/uploads/' . $file; // đổi sang URL thực tế
 
 // ===== LẤY TRẠNG THÁI REVIEW CỦA NGƯỜI DÙNG HIỆN TẠI =====
 $user_review_type = '';
@@ -383,21 +382,63 @@ foreach ($all_replies as $r) {
 ?>
 
 <div class="container my-4">
+    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin' && $doc['status_id'] != 2): ?>
+        <div class="alert alert-warning border-warning">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <div>
+                    <strong>⚠️ ADMIN NOTICE:</strong>
+                    <span>
+                        Tài liệu này chưa được duyệt 
+                        <?php
+                        $status_texts = [
+                            1 => '(Đang chờ duyệt)',
+                            3 => '(Đã từ chối)',
+                            0 => '(Nháp)'
+                        ];
+                        echo $status_texts[$doc['status_id']] ?? '(Trạng thái không xác định)';
+                        ?>
+                        - chỉ admin mới có thể xem.
+                    </span>
+                    <div class="mt-2">
+                        <a href="approve.php" class="btn btn-sm btn-primary">
+                            <i class="fas fa-tasks me-1"></i>Đến trang duyệt
+                        </a>
+                        <?php if ($doc['status_id'] == 1): ?>
+                            <a href="approve.php?approve=<?= $doc_id ?>" class="btn btn-sm btn-success" 
+                               onclick="return confirm('Duyệt tài liệu này?')">
+                                <i class="fas fa-check me-1"></i>Duyệt ngay
+                            </a>
+                            <a href="approve.php?reject=<?= $doc_id ?>" class="btn btn-sm btn-danger" 
+                               onclick="return confirm('Từ chối tài liệu này?')">
+                                <i class="fas fa-times me-1"></i>Từ chối
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+    
     <div class="d-flex justify-content-between align-items-center mb-2">
         <h2 class="mb-0"><?= htmlspecialchars($doc['title'] ?? '') ?></h2>
 
         <div class="mb-3 d-flex flex-column align-items-end" style="min-height:40px;">
             <div class="d-flex align-items-center flex-wrap gap-2" style="justify-content: flex-end;">
-                <strong class="me-2">Tags:</strong>
+                <strong class="me-2">Tag:</strong>
                 <?php if ($doc_tags): ?>
                     <div id="all-tags" class="d-flex flex-wrap gap-1 align-items-center">
                         <?php foreach ($doc_tags as $tag): ?>
                             <span class="badge tag-badge px-2 py-1 mb-1">#<?= htmlspecialchars($tag) ?>
-                                <a href="document_view.php?id=<?= $doc_id ?>&delete_tag=<?= urlencode($tag) ?>" class="text-danger ms-1" title="Xóa tag">&times;</a>
+                                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                                    <a href="document_view.php?id=<?= $doc_id ?>&delete_tag=<?= urlencode($tag) ?>" class="text-danger ms-1" title="Xóa tag">&times;</a>
+                                <?php endif; ?>
                             </span>
                         <?php endforeach; ?>
-                        <button id="add-tag-btn" class="btn btn-success btn-sm ms-2 px-2 py-1" style="font-size:1em;">+</button>
-                    </div>
+                        <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                            <button id="add-tag-btn" class="btn btn-success btn-sm ms-2 px-2 py-1" style="font-size:1em;">+</button>
+                        <?php endif; ?>
+                        </div>
                 <?php else: ?>
                     <span class="text-muted no-tag-text">Chưa có tag</span>
                     <button id="add-tag-btn" class="btn btn-success btn-sm ms-2 px-2 py-1" style="font-size:1em;">+</button>
@@ -565,8 +606,6 @@ foreach ($all_replies as $r) {
         <?php if (isset($_SESSION['user_id'])): ?>
             <button id="like-btn" class="btn btn-success me-2<?= ($user_review_type === 'positive' ? ' active' : '') ?>">👍 Thích</button>
             <button id="dislike-btn" class="btn btn-danger<?= ($user_review_type === 'negative' ? ' active' : '') ?>">👎 Không thích</button>
-        <?php else: ?>
-            <div class="alert alert-warning">⚠️ Bạn cần <a href="login.php">đăng nhập</a> để đánh giá tài liệu.</div>
         <?php endif; ?>
     </div>
     <script>
@@ -661,7 +700,7 @@ foreach ($all_replies as $r) {
     <?php if (isset($_SESSION['user_id'])): ?>
         <a href="download.php?id=<?= $doc['doc_id'] ?? 0 ?>" class="btn btn-primary mb-3">📥 Tải xuống</a>
     <?php else: ?>
-        <div class="alert alert-warning">⚠️ Bạn cần <a href="register.php">tạo tài khoản</a> hoặc <a href="login.php">đăng nhập</a> để tải tài liệu này.</div>
+        <div class="alert alert-warning">⚠️ Hãy <a href="login.php">đăng nhập</a> hoặc <a href="register.php">tạo tài khoản</a> để tải, đánh giá và bình luận trên tài liệu này.</div>
     <?php endif; ?>
 
     <hr>
@@ -682,8 +721,6 @@ foreach ($all_replies as $r) {
                 <button class="btn btn-success">Gửi bình luận</button>
             </form>
         <?php endif; ?>
-    <?php else: ?>
-        <div class="alert alert-warning">⚠️ Tạo tài khoản hoặc đăng nhập để bình luận.</div>
     <?php endif; ?>
 
     <form method="get" class="row g-2 mb-3 align-items-end" id="comment-filter-form">

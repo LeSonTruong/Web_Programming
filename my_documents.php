@@ -129,7 +129,7 @@ if ($is_admin) {
                         </td>
                         <td><?= $doc['upload_date'] ?></td>
                         <td>
-                            <a href="<?= htmlspecialchars($doc['file_path']) ?>" target="_blank" class="btn btn-info btn-sm mb-1">Xem/Tải</a>
+                            <a href="document_view.php?id=<?= $doc['doc_id'] ?>" target="_blank" class="btn btn-info btn-sm">Xem tài liệu</a>
 
                             <!-- Nút Sửa -->
                             <a href="edit_document.php?doc_id=<?= $doc['doc_id'] ?>" class="btn btn-primary btn-sm mb-1">Sửa</a>
