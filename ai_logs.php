@@ -2,17 +2,6 @@
 include 'includes/header.php';
 include 'includes/db.php';
 
-// ====== KIỂM TRA ĐĂNG NHẬP ======
-if (!isset($_SESSION['user_id'])) {
-    echo '<div class="container my-5">
-            <div class="alert alert-warning text-center">
-                ⚠️ Tạo tài khoản hoặc đăng nhập đi bạn ÊYYYYY!
-            </div>
-          </div>';
-    include 'includes/footer.php';
-    exit();
-}
-
 // ====== KIỂM TRA QUYỀN ADMIN ======
 if (!isset($_SESSION['role']) || $_SESSION['role'] != 'admin') {
     echo '<div class="container my-5">

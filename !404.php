@@ -31,17 +31,6 @@ include 'includes/header.php';
                     <a href="index.php" class="btn btn-primary">
                         🏠 Về trang chủ
                     </a>
-                    <a href="documents.php" class="btn btn-outline-secondary">
-                        📚 Xem tài liệu
-                    </a>
-                </div>
-                
-                <!-- Thông tin hỗ trợ -->
-                <div class="mt-5 pt-4 border-top">
-                    <p class="text-muted small">
-                        Nếu bạn cho rằng đây là lỗi hệ thống, vui lòng 
-                        <a href="mailto:support@example.com" class="text-decoration-none">liên hệ với chúng tôi</a>.
-                    </p>
                 </div>
             </div>
         </div>
