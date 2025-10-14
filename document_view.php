@@ -13,6 +13,8 @@ if (isset($_SESSION['user_id'])) {
     $khoabinhluan = $stmt->fetchColumn() == 1;
 }
 
+$khongtuongtac = $khoabinhluan || !isset($_SESSION['user_id']) || empty($_SESSION['user_id']);
+
 $doc_id = (int)($_POST['doc_id'] ?? $_GET['id'] ?? 0);
 
 // ===== LẤY TAGS CỦA TÀI LIỆU =====
@@ -686,7 +688,7 @@ foreach ($all_replies as $r) {
     <?php if (isset($_SESSION['user_id'])): ?>
         <a href="download.php?id=<?= $doc['doc_id'] ?? 0 ?>" class="btn btn-primary mb-3">📥 Tải xuống</a>
     <?php else: ?>
-        <div class="alert alert-warning">⚠️ Hãy <a href="login.php">đăng nhập</a> hoặc <a href="register.php">tạo tài khoản</a> để tải, đánh giá và bình luận trên tài liệu này.</div>
+        <div class="alert alert-warning">⚠️ Hãy <a href="login.php">đăng nhập</a> hoặc <a href="register.php">tạo tài khoản</a> để tải và tương tác trên tài liệu này.</div>
     <?php endif; ?>
 
     <hr>
@@ -756,10 +758,10 @@ foreach ($all_replies as $r) {
                     </div>
 
                     <div class="d-flex gap-2 align-items-center">
-                        <?php $disabledAttr = $khoabinhluan ? 'disabled title="Bạn đã bị khóa bình luận"' : ''; ?>
+                        <?php $disabledAttr = $khongtuongtac ? 'disabled' : ''; ?>
                         <button <?= $disabledAttr ?> class="btn btn-sm btn-outline-primary like-comment-btn" data-id="<?= (int)$c['comment_id'] ?>">👍 <span class="like-count"><?= (int)($c['like_count'] ?? 0) ?></span></button>
                         <button <?= $disabledAttr ?> class="btn btn-sm btn-outline-danger dislike-comment-btn" data-id="<?= (int)$c['comment_id'] ?>">👎 <span class="dislike-count"><?= (int)($c['dislike_count'] ?? 0) ?></span></button>
-                        <button <?= $disabledAttr ?> class="btn btn-sm btn-outline-secondary reply-comment-btn" data-id="<?= (int)$c['comment_id'] ?>" <?= $khoabinhluan ? 'data-disabled="1"' : '' ?>>↩️ Phản hồi</button>
+                        <button <?= $disabledAttr ?> class="btn btn-sm btn-outline-secondary reply-comment-btn" data-id="<?= (int)$c['comment_id'] ?>" <?= $khongtuongtac ? 'data-disabled="1"' : '' ?>>↩️ Phản hồi</button>
 
                         <?php
                         // Tìm reply mới nhất cho comment này
@@ -773,11 +775,11 @@ foreach ($all_replies as $r) {
                             <span class="reply-info">Phản hồi mới nhất: <?= date("H:i", strtotime($latest_reply['created_at'])) ?> Ngày <?= date("d/m/Y", strtotime($latest_reply['created_at'])) ?> (<?= timeAgo($latest_reply['created_at']) ?>)</span>
                         <?php endif; ?>
 
-                        <?php if (!$khoabinhluan && $is_owner): ?>
+                        <?php if (!$khongtuongtac && $is_owner): ?>
                             <a href="?edit_comment=<?= (int)$c['comment_id'] ?>&id=<?= (int)$doc['doc_id'] ?>#comment-<?= (int)$c['comment_id'] ?>" class="btn btn-sm btn-warning">Sửa</a>
                         <?php endif; ?>
 
-                        <?php if (!$khoabinhluan && ($is_owner || (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'))): ?>
+                        <?php if (!$khongtuongtac && ($is_owner || (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'))): ?>
                             <a href="?delete_comment=<?= (int)$c['comment_id'] ?>&id=<?= (int)$doc['doc_id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Bạn chắc chắn muốn xóa bình luận này?');">Xóa</a>
                         <?php endif; ?>
                     </div>
