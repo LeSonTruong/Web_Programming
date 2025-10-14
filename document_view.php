@@ -296,7 +296,7 @@ $total_downloads = $downloadData['total_downloads'] ?? 0;
 // ===== XÁC ĐỊNH LOẠI FILE =====
 $file = $doc['file_path'] ?? '';
 $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-$file_url = 'https://studyshare.banhgao.net/uploads/' . $file; // đổi sang URL thực tế
+$file_url = 'https://studyshare.banhgao.net/' . $file; // đổi sang URL thực tế
 
 // ===== LẤY TRẠNG THÁI REVIEW CỦA NGƯỜI DÙNG HIỆN TẠI =====
 $user_review_type = '';
@@ -382,39 +382,22 @@ foreach ($all_replies as $r) {
 ?>
 
 <div class="container my-4">
-    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin' && $doc['status_id'] != 2): ?>
+    <?php if ( // kiểm tra nếu là admin hoặc người tải lên tài liệu đó để hiện thông báo
+    (
+        (isset($_SESSION['role']) && $_SESSION['role'] === 'admin')
+        ||
+        (isset($_SESSION['user_id']) && $doc['user_id'] == $_SESSION['user_id'])
+    )
+    && $doc['status_id'] != 2
+    ): ?>
         <div class="alert alert-warning border-warning">
             <div class="d-flex align-items-center">
                 <i class="fas fa-exclamation-triangle me-2"></i>
                 <div>
-                    <strong>⚠️ ADMIN NOTICE:</strong>
+                    <strong>LƯU Ý:</strong>
                     <span>
-                        Tài liệu này chưa được duyệt 
-                        <?php
-                        $status_texts = [
-                            1 => '(Đang chờ duyệt)',
-                            3 => '(Đã từ chối)',
-                            0 => '(Nháp)'
-                        ];
-                        echo $status_texts[$doc['status_id']] ?? '(Trạng thái không xác định)';
-                        ?>
-                        - chỉ admin mới có thể xem.
+                        Tài liệu này chưa được duyệt - chỉ người tải lên và quản trị viên mới có thể xem tài liệu này.
                     </span>
-                    <div class="mt-2">
-                        <a href="approve.php" class="btn btn-sm btn-primary">
-                            <i class="fas fa-tasks me-1"></i>Đến trang duyệt
-                        </a>
-                        <?php if ($doc['status_id'] == 1): ?>
-                            <a href="approve.php?approve=<?= $doc_id ?>" class="btn btn-sm btn-success" 
-                               onclick="return confirm('Duyệt tài liệu này?')">
-                                <i class="fas fa-check me-1"></i>Duyệt ngay
-                            </a>
-                            <a href="approve.php?reject=<?= $doc_id ?>" class="btn btn-sm btn-danger" 
-                               onclick="return confirm('Từ chối tài liệu này?')">
-                                <i class="fas fa-times me-1"></i>Từ chối
-                            </a>
-                        <?php endif; ?>
-                    </div>
                 </div>
             </div>
         </div>

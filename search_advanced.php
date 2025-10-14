@@ -58,25 +58,6 @@ $tags = $conn->query("SELECT tag_id, tag_name FROM tags ORDER BY tag_name")->fet
             </select>
         </div>
 
-        <div class="col-md-2">
-            <select name="filetype" class="form-select">
-                <option value="">📂 Tất cả định dạng</option>
-                <?php
-                $types = [
-                    'pdf' => 'PDF',
-                    'doc' => 'Word',
-                    'ppt' => 'PowerPoint',
-                    'image' => 'Ảnh',
-                    'code' => 'Code',
-                    'other' => 'Khác'
-                ];
-                foreach ($types as $k => $v): ?>
-                    <option value="<?php echo $k; ?>" <?php echo ($filetype === $k) ? 'selected' : ''; ?>>
-                        <?php echo $v; ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
 
         <div class="col-md-2">
             <select name="sortby" class="form-select">
@@ -181,10 +162,13 @@ if ($search !== '' || $subject || $department || $filetype || $sortby || !empty(
         if (!empty($selected_tags)) {
             $tagPlaceholders = [];
             foreach ($selected_tags as $idx => $tag_id) {
-                $tagPlaceholders[] = ":ctag$idx";
-                $countParams[":ctag$idx"] = $tag_id;
+                $ph = ":ctag$idx";
+                $tagPlaceholders[] = $ph;
+                // truyền vào cả params dùng cho query chính và count query
+                $params[$ph] = $tag_id;
+                $countParams[$ph] = $tag_id;
             }
-            $countSql .= " AND dt.tag_id IN (" . implode(',', $tagPlaceholders) . ")";
+            $sql .= " AND dt.tag_id IN (" . implode(',', $tagPlaceholders) . ")";
         }
         $sql .= " GROUP BY d.doc_id";
         if ($sortby === 'likes') $sql .= " ORDER BY positive_count DESC";
@@ -227,10 +211,7 @@ if ($search !== '' || $subject || $department || $filetype || $sortby || !empty(
             $countSql .= " AND s.department = :department";
             $countParams[':department'] = $department;
         }
-        if ($filetype) {
-            $countSql .= " AND d.document_type = :filetype";
-            $countParams[':filetype'] = $filetype;
-        }
+        
         if (!empty($selected_tags)) {
             $tagPlaceholders = [];
             foreach ($selected_tags as $idx => $tag_id) {

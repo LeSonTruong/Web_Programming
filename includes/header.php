@@ -150,7 +150,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <nav class="navbar navbar-expand-lg navbar-dark shadow-sm fixed-top">
         <div class="container d-flex align-items-center justify-content-between">
             <!-- Logo -->
-            <a class="navbar-brand fw-bold me-3" href="index.php">StudyShare</a>
+            <a class="navbar-brand fw-bold me-3" href="/">StudyShare</a>
 
             <!-- Ô tìm kiếm lớn -->
             <form class="d-flex search-box flex-grow-1 mx-3 d-none d-lg-flex" role="search" action="search_advanced.php" method="get">
@@ -167,7 +167,7 @@ if (session_status() === PHP_SESSION_NONE) {
             <!-- Menu chính -->
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-lg-center">
-                    <li class="nav-item"><a class="nav-link" href="index.php">🏠 Trang chủ</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/">🏠 Trang chủ</a></li>
                     <li class="nav-item"><a class="nav-link" href="documents.php">📄 Tài liệu</a></li>
                     <li class="nav-item"><a class="nav-link" href="search_advanced.php">🔎 Tìm kiếm nâng cao</a></li>
 
