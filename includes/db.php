@@ -6,10 +6,10 @@ $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->load();
 
 // Get database configuration from environment variables
-$host = $_ENV['DB_HOST'] ?? 'localhost';
-$db   = $_ENV['DB_NAME'] ?? 'web_programming';
-$user = $_ENV['DB_USER'] ?? 'root';
-$pass = $_ENV['DB_PASS'] ?? '';
+$host = $_ENV['DB_HOST'];
+$db   = $_ENV['DB_NAME'];
+$user = $_ENV['DB_USER'];
+$pass = $_ENV['DB_PASS'];
 
 try {
     $conn = new PDO("mysql:host=$host;dbname=$db;charset=utf8mb4", $user, $pass);

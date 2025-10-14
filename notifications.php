@@ -20,12 +20,12 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
     // Duyệt tài liệu
     $pending_docs = $conn->query("SELECT COUNT(*) FROM documents WHERE status_id=1")->fetchColumn();
     echo '<div class="mb-3"><strong>✅ Tài liệu chờ duyệt:</strong> ' . $pending_docs . ' <a href="approve.php" class="btn btn-sm btn-primary ms-2">Xem chi tiết</a></div>';
-    // Báo cáo vi phạm
+    /* Báo cáo vi phạm
     $pending_reports = $conn->query("SELECT COUNT(*) FROM reports WHERE status='pending'")->fetchColumn();
     echo '<div class="mb-3"><strong>🚩 Báo cáo vi phạm:</strong> ' . $pending_reports . ' <a href="report.php" class="btn btn-sm btn-danger ms-2">Xem chi tiết</a></div>';
     // Bình luận bị report
     $reported_comments = $conn->query("SELECT COUNT(*) FROM comments WHERE reported=1")->fetchColumn();
-    echo '<div class="mb-3"><strong>� Bình luận bị báo cáo:</strong> ' . $reported_comments . '</div>';
+    echo '<div class="mb-3"><strong>� Bình luận bị báo cáo:</strong> ' . $reported_comments . '</div>';*/
     // Bình luận được phản hồi
     $reply_stmt = $conn->query("SELECT COUNT(*) FROM comments WHERE parent_comment_id IS NOT NULL AND created_at >= NOW() - INTERVAL 1 DAY");
     $recent_replies = $reply_stmt->fetchColumn();

@@ -179,8 +179,8 @@ if (session_status() === PHP_SESSION_NONE) {
                         $notifications_count = 0;
                         if ($_SESSION['role'] === 'admin') {
                             $pending_docs = $conn->query("SELECT COUNT(*) FROM documents WHERE status_id=1")->fetchColumn();
-                            $pending_reports = $conn->query("SELECT COUNT(*) FROM reports WHERE status='pending'")->fetchColumn();
-                            $reported_comments = $conn->query("SELECT COUNT(*) FROM comments WHERE reported=1")->fetchColumn();
+                            $pending_reports = 0; //$conn->query("SELECT COUNT(*) FROM reports WHERE status='pending'")->fetchColumn();
+                            $reported_comments = 0; //$conn->query("SELECT COUNT(*) FROM comments WHERE reported=1")->fetchColumn();
                             $notifications_count = $pending_docs + $pending_reports + $reported_comments;
                         } else {
                             $stmt = $conn->prepare("SELECT COUNT(*) FROM notifications WHERE user_id=? AND is_read=0");

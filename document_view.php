@@ -6,11 +6,73 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+$khoabinhluan = false;
+if (isset($_SESSION['user_id'])) {
+    $stmt = $conn->prepare("SELECT comment_locked FROM users WHERE user_id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $khoabinhluan = $stmt->fetchColumn() == 1;
+}
+
 $doc_id = (int)($_POST['doc_id'] ?? $_GET['id'] ?? 0);
+
+// ===== LẤY TAGS CỦA TÀI LIỆU =====
+$tagsStmt = $conn->prepare("SELECT t.tag_name FROM document_tags dt JOIN tags t ON dt.tag_id = t.tag_id WHERE dt.doc_id = ?");
+$tagsStmt->execute([$doc_id]);
+$doc_tags = $tagsStmt->fetchAll(PDO::FETCH_COLUMN);
+$stmt = $conn->prepare("
+    SELECT d.*, u.username, s.subject_name,
+        SUM(CASE WHEN r.review_type = 'positive' THEN 1 ELSE 0 END) AS positive_count,
+        SUM(CASE WHEN r.review_type = 'negative' THEN 1 ELSE 0 END) AS negative_count
+    FROM documents d
+    JOIN users u ON d.user_id = u.user_id
+    LEFT JOIN subjects s ON d.subject_id = s.subject_id
+    LEFT JOIN reviews r ON d.doc_id = r.doc_id
+    WHERE d.doc_id = ?
+    GROUP BY d.doc_id
+");
+$stmt->execute([$doc_id]);
+$doc = $stmt->fetch();
+
+// Kiểm tra quyền xem tài liệu
+$has_access = (
+    (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ||
+    (isset($_SESSION['user_id']) && isset($doc['user_id']) && (int)$doc['user_id'] === (int)$_SESSION['user_id'])
+);
+if (!$doc || ($doc['status_id'] != 2 && !$has_access)) {
+    header("Location: not_found");
+    exit;
+}
 
 // Tăng lượt xem mỗi lần truy cập
 if ($doc_id) {
     $conn->prepare("UPDATE documents SET views = views + 1 WHERE doc_id = ?")->execute([$doc_id]);
+}
+
+// ===== TÍNH TỔNG ĐÁNH GIÁ =====
+$total_reviews = ($doc['positive_count'] ?? 0) + ($doc['negative_count'] ?? 0);
+$review_summary = "Chưa có đánh giá";
+if ($total_reviews > 0) {
+    $ratio = ($doc['positive_count'] ?? 0) / $total_reviews;
+    $review_summary = $ratio >= 0.7 ? "Đánh giá tích cực" : ($ratio >= 0.4 ? "Đánh giá trung bình" : "Đánh giá tiêu cực");
+}
+
+// ===== ĐẾM LƯỢT TẢI =====
+$countStmt = $conn->prepare("SELECT COUNT(*) AS total_downloads FROM downloads WHERE doc_id=?");
+$countStmt->execute([$doc_id]);
+$downloadData = $countStmt->fetch();
+$total_downloads = $downloadData['total_downloads'] ?? 0;
+
+// ===== XÁC ĐỊNH LOẠI FILE =====
+$file = $doc['file_path'] ?? '';
+$ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+$file_url = 'https://studyshare.banhgao.net/' . $file;
+
+// ===== LẤY TRẠNG THÁI REVIEW CỦA NGƯỜI DÙNG HIỆN TẠI =====
+$user_review_type = '';
+if (isset($_SESSION['user_id'])) {
+    $reviewStmt = $conn->prepare("SELECT review_type FROM reviews WHERE user_id = ? AND doc_id = ? LIMIT 1");
+    $reviewStmt->execute([$_SESSION['user_id'], $doc_id]);
+    $user_review_type = $reviewStmt->fetchColumn() ?: '';
 }
 
 // ===== XỬ LÝ XÓA/SỬA BÌNH LUẬN =====
@@ -254,58 +316,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_GET['edit_comment'])) {
     exit();
 }
 
-
-
-// ===== LẤY TAGS CỦA TÀI LIỆU =====
-$tagsStmt = $conn->prepare("SELECT t.tag_name FROM document_tags dt JOIN tags t ON dt.tag_id = t.tag_id WHERE dt.doc_id = ?");
-$tagsStmt->execute([$doc_id]);
-$doc_tags = $tagsStmt->fetchAll(PDO::FETCH_COLUMN);
-$stmt = $conn->prepare("
-    SELECT d.*, u.username, s.subject_name,
-        SUM(CASE WHEN r.review_type = 'positive' THEN 1 ELSE 0 END) AS positive_count,
-        SUM(CASE WHEN r.review_type = 'negative' THEN 1 ELSE 0 END) AS negative_count
-    FROM documents d
-    JOIN users u ON d.user_id = u.user_id
-    LEFT JOIN subjects s ON d.subject_id = s.subject_id
-    LEFT JOIN reviews r ON d.doc_id = r.doc_id
-    WHERE d.doc_id = ?
-    GROUP BY d.doc_id
-");
-$stmt->execute([$doc_id]);
-$doc = $stmt->fetch();
-
-if ((!$doc) or (($doc['status_id'] != 2) and (!isset($_SESSION['role']) || $_SESSION['role'] != 'admin'))) {
-    header("Location: not_found");
-    exit;
-}
-
-// ===== TÍNH TỔNG ĐÁNH GIÁ =====
-$total_reviews = ($doc['positive_count'] ?? 0) + ($doc['negative_count'] ?? 0);
-$review_summary = "Chưa có đánh giá";
-if ($total_reviews > 0) {
-    $ratio = ($doc['positive_count'] ?? 0) / $total_reviews;
-    $review_summary = $ratio >= 0.7 ? "Đánh giá tích cực" : ($ratio >= 0.4 ? "Đánh giá trung bình" : "Đánh giá tiêu cực");
-}
-
-// ===== ĐẾM LƯỢT TẢI =====
-$countStmt = $conn->prepare("SELECT COUNT(*) AS total_downloads FROM downloads WHERE doc_id=?");
-$countStmt->execute([$doc_id]);
-$downloadData = $countStmt->fetch();
-$total_downloads = $downloadData['total_downloads'] ?? 0;
-
-// ===== XÁC ĐỊNH LOẠI FILE =====
-$file = $doc['file_path'] ?? '';
-$ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-$file_url = 'https://studyshare.banhgao.net/' . $file; // đổi sang URL thực tế
-
-// ===== LẤY TRẠNG THÁI REVIEW CỦA NGƯỜI DÙNG HIỆN TẠI =====
-$user_review_type = '';
-if (isset($_SESSION['user_id'])) {
-    $reviewStmt = $conn->prepare("SELECT review_type FROM reviews WHERE user_id = ? AND doc_id = ? LIMIT 1");
-    $reviewStmt->execute([$_SESSION['user_id'], $doc_id]);
-    $user_review_type = $reviewStmt->fetchColumn() ?: '';
-}
-
 // ===== LẤY DANH SÁCH BÌNH LUẬN =====
 
 // Phân trang bình luận
@@ -382,14 +392,7 @@ foreach ($all_replies as $r) {
 ?>
 
 <div class="container my-4">
-    <?php if ( // kiểm tra nếu là admin hoặc người tải lên tài liệu đó để hiện thông báo
-    (
-        (isset($_SESSION['role']) && $_SESSION['role'] === 'admin')
-        ||
-        (isset($_SESSION['user_id']) && $doc['user_id'] == $_SESSION['user_id'])
-    )
-    && $doc['status_id'] != 2
-    ): ?>
+    <?php if ($has_access && $doc['status_id'] != 2): ?>
         <div class="alert alert-warning border-warning">
             <div class="d-flex align-items-center">
                 <i class="fas fa-exclamation-triangle me-2"></i>
@@ -690,76 +693,28 @@ foreach ($all_replies as $r) {
 
 
     <?php if (isset($_SESSION['user_id'])): ?>
-        <?php if (isset($edit_comment) && $edit_comment && $edit_comment['user_id'] == $_SESSION['user_id']): ?>
-            <form method="post" class="mb-4">
-                <input type="hidden" name="doc_id" value="<?= $doc['doc_id'] ?>">
-                <textarea name="edit_content" class="form-control mb-2" rows="3" required><?= htmlspecialchars($edit_comment['content']) ?></textarea>
-                <button class="btn btn-warning">Cập nhật bình luận</button>
-                <a href="document_view.php?id=<?= $doc['doc_id'] ?>" class="btn btn-secondary">Hủy</a>
-            </form>
+        <?php if ($khoabinhluan): ?>
+            <div class="alert alert-warning mb-3">⚠️ Tài khoản của bạn đã bị khóa bình luận — bạn không thể gửi, sửa hoặc tương tác với bình luận.</div>
         <?php else: ?>
-            <form method="post" class="mb-4">
-                <input type="hidden" name="doc_id" value="<?= $doc['doc_id'] ?>">
-                <textarea name="comment_content" class="form-control mb-2" rows="3" placeholder="Viết bình luận..." required></textarea>
-                <button class="btn btn-success">Gửi bình luận</button>
-            </form>
+            <?php if (isset($edit_comment) && $edit_comment && $edit_comment['user_id'] == $_SESSION['user_id']): ?>
+                <form method="post" class="mb-4">
+                    <input type="hidden" name="doc_id" value="<?= htmlspecialchars($doc['doc_id']) ?>">
+                    <textarea name="edit_content" class="form-control mb-2" rows="3" required><?= htmlspecialchars($edit_comment['content']) ?></textarea>
+                    <button class="btn btn-warning">Cập nhật bình luận</button>
+                    <a href="document_view.php?id=<?= htmlspecialchars($doc['doc_id']) ?>" class="btn btn-secondary">Hủy</a>
+                </form>
+            <?php else: ?>
+                <form method="post" class="mb-4">
+                    <input type="hidden" name="doc_id" value="<?= htmlspecialchars($doc['doc_id']) ?>">
+                    <textarea name="comment_content" class="form-control mb-2" rows="3" placeholder="Viết bình luận..." required></textarea>
+                    <button class="btn btn-success">Gửi bình luận</button>
+                </form>
+            <?php endif; ?>
         <?php endif; ?>
     <?php endif; ?>
 
-    <form method="get" class="row g-2 mb-3 align-items-end" id="comment-filter-form">
-        <input type="hidden" name="id" value="<?= $doc_id ?>">
-        <div class="col-auto">
-            <label for="comment_sort" class="form-label">Thời gian gửi</label>
-            <select name="comment_sort" id="comment_sort" class="form-select">
-                <option value="asc" <?= $comment_sort === 'ASC' ? 'selected' : '' ?>>Cũ nhất</option>
-                <option value="desc" <?= $comment_sort === 'DESC' ? 'selected' : '' ?>>Mới nhất</option>
-            </select>
-        </div>
-        <div class="col-auto">
-            <label for="like_sort" class="form-label">Số lượt thích</label>
-            <select name="like_sort" id="like_sort" class="form-select">
-                <option value="">--</option>
-                <option value="desc" <?= $like_sort === 'DESC' ? 'selected' : '' ?>>Nhiều nhất</option>
-                <option value="asc" <?= $like_sort === 'ASC' ? 'selected' : '' ?>>Ít nhất</option>
-            </select>
-        </div>
-        <div class="col-auto">
-            <label for="dislike_sort" class="form-label">Số lượt không thích</label>
-            <select name="dislike_sort" id="dislike_sort" class="form-select">
-                <option value="">--</option>
-                <option value="desc" <?= $dislike_sort === 'DESC' ? 'selected' : '' ?>>Nhiều nhất</option>
-                <option value="asc" <?= $dislike_sort === 'ASC' ? 'selected' : '' ?>>Ít nhất</option>
-            </select>
-        </div>
-        <div class="col-auto">
-            <label for="search_user" class="form-label">Tìm theo username</label>
-            <input type="text" name="search_user" id="search_user" class="form-control" value="<?= htmlspecialchars($search_user) ?>" placeholder="Nhập username...">
-        </div>
-        <div class="col-auto">
-            <button class="btn btn-primary" id="filter-btn" type="submit">Lọc</button>
-        </div>
-    </form>
-    <script>
-        document.getElementById('comment-filter-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const form = e.target;
-            const params = new URLSearchParams(new FormData(form)).toString();
-            fetch(window.location.pathname + '?' + params)
-                .then(res => res.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const newComments = doc.querySelector('.container.my-4.pt-5');
-                    const oldComments = document.querySelector('.container.my-4.pt-5');
-                    if (newComments && oldComments) {
-                        oldComments.innerHTML = newComments.innerHTML;
-                    }
-                });
-        });
-    </script>
-
     <!-- Hiển thị bình luận -->
-    <?php if (!$comments): ?>
+  <?php if (!$comments): ?>
         <div class="alert alert-info">Chưa có bình luận nào.</div>
     <?php else: ?>
         <?php
@@ -776,49 +731,36 @@ foreach ($all_replies as $r) {
         }
         ?>
         <?php foreach ($comments as $c): ?>
-            <div class="card mb-2 shadow-sm" id="comment-<?= $c['comment_id'] ?>">
+            <div class="card mb-2 shadow-sm" id="comment-<?= (int)$c['comment_id'] ?>">
                 <div class="card-body">
                     <strong><a href="profile.php?user=<?= urlencode($c['username']) ?>" class="text-decoration-none"><?= htmlspecialchars($c['username']) ?></a></strong>
                     <small class="comment-time">
                         <?= date("H:i", strtotime($c['created_at'])) ?> Ngày <?= date("d/m/Y", strtotime($c['created_at'])) ?> (<?= timeAgo($c['created_at']) ?>)
                         <?php if (!empty($c['edited_at'])): ?> <span class="text-warning ms-2">(Đã chỉnh sửa)</span> <?php endif; ?>
                     </small>
-                    <style>
-                        .comment-time {
-                            color: #007bff;
-                            background: transparent;
-                            font-weight: 500;
-                        }
 
-                        body.dark-mode .comment-time {
-                            color: #ffd700;
-                        }
-
-                        .reply-info {
-                            color: #28a745;
-                            font-size: 0.95em;
-                            margin-left: 8px;
-                        }
-                    </style>
                     <div class="comment-content-area">
                         <?php
                         $is_owner = isset($_SESSION['user_id']) && $_SESSION['user_id'] == $c['user_id'];
-                        if (isset($_GET['edit_comment']) && $_GET['edit_comment'] == $c['comment_id'] && $is_owner): ?>
+                        // Nếu người xem bị khóa bình luận thì không hiện form edit inline
+                        if (!$khoabinhluan && isset($_GET['edit_comment']) && $_GET['edit_comment'] == $c['comment_id'] && $is_owner): ?>
                             <form class="edit-comment-form" method="post" style="margin-bottom:0;">
-                                <input type="hidden" name="doc_id" value="<?= $doc['doc_id'] ?>">
+                                <input type="hidden" name="doc_id" value="<?= htmlspecialchars($doc['doc_id']) ?>">
                                 <textarea name="edit_content" class="form-control mb-2" rows="3" required><?= htmlspecialchars($c['content']) ?></textarea>
                                 <button class="btn btn-warning btn-sm">Cập nhật</button>
-                                <a href="document_view.php?id=<?= $doc['doc_id'] ?>" class="btn btn-secondary btn-sm">Hủy</a>
+                                <a href="document_view.php?id=<?= htmlspecialchars($doc['doc_id']) ?>" class="btn btn-secondary btn-sm">Hủy</a>
                             </form>
                         <?php else: ?>
                             <p><?= nl2br(htmlspecialchars($c['content'])) ?></p>
                         <?php endif; ?>
                     </div>
+
                     <div class="d-flex gap-2 align-items-center">
-                        <button class="btn btn-sm btn-outline-primary like-comment-btn" data-id="<?= $c['comment_id'] ?>">👍 <span class="like-count"><?= $c['like_count'] ?></span></button>
-                        <button class="btn btn-sm btn-outline-danger dislike-comment-btn" data-id="<?= $c['comment_id'] ?>">👎 <span class="dislike-count"><?= $c['dislike_count'] ?? 0 ?></span></button>
-                        <button class="btn btn-sm btn-outline-secondary reply-comment-btn" data-id="<?= $c['comment_id'] ?>">↩️ Phản hồi</button>
-                        <a href="report.php?reported_user=<?= urlencode($c['username']) ?>" class="btn btn-sm btn-outline-warning">🚩 Báo cáo</a>
+                        <?php $disabledAttr = $khoabinhluan ? 'disabled title="Bạn đã bị khóa bình luận"' : ''; ?>
+                        <button <?= $disabledAttr ?> class="btn btn-sm btn-outline-primary like-comment-btn" data-id="<?= (int)$c['comment_id'] ?>">👍 <span class="like-count"><?= (int)($c['like_count'] ?? 0) ?></span></button>
+                        <button <?= $disabledAttr ?> class="btn btn-sm btn-outline-danger dislike-comment-btn" data-id="<?= (int)$c['comment_id'] ?>">👎 <span class="dislike-count"><?= (int)($c['dislike_count'] ?? 0) ?></span></button>
+                        <button <?= $disabledAttr ?> class="btn btn-sm btn-outline-secondary reply-comment-btn" data-id="<?= (int)$c['comment_id'] ?>" <?= $khoabinhluan ? 'data-disabled="1"' : '' ?>>↩️ Phản hồi</button>
+
                         <?php
                         // Tìm reply mới nhất cho comment này
                         $latest_reply = null;
@@ -830,21 +772,26 @@ foreach ($all_replies as $r) {
                         if ($latest_reply): ?>
                             <span class="reply-info">Phản hồi mới nhất: <?= date("H:i", strtotime($latest_reply['created_at'])) ?> Ngày <?= date("d/m/Y", strtotime($latest_reply['created_at'])) ?> (<?= timeAgo($latest_reply['created_at']) ?>)</span>
                         <?php endif; ?>
-                        <?php if ($is_owner): ?>
-                            <a href="?edit_comment=<?= $c['comment_id'] ?>&id=<?= $doc['doc_id'] ?>#comment-<?= $c['comment_id'] ?>" class="btn btn-sm btn-warning">Sửa</a>
+
+                        <?php if (!$khoabinhluan && $is_owner): ?>
+                            <a href="?edit_comment=<?= (int)$c['comment_id'] ?>&id=<?= (int)$doc['doc_id'] ?>#comment-<?= (int)$c['comment_id'] ?>" class="btn btn-sm btn-warning">Sửa</a>
                         <?php endif; ?>
-                        <?php if ($is_owner || (isset($_SESSION['role']) && $_SESSION['role'] === 'admin')): ?>
-                            <a href="?delete_comment=<?= $c['comment_id'] ?>&id=<?= $doc['doc_id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Bạn chắc chắn muốn xóa bình luận này?');">Xóa</a>
+
+                        <?php if (!$khoabinhluan && ($is_owner || (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'))): ?>
+                            <a href="?delete_comment=<?= (int)$c['comment_id'] ?>&id=<?= (int)$doc['doc_id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Bạn chắc chắn muốn xóa bình luận này?');">Xóa</a>
                         <?php endif; ?>
                     </div>
-                    <div class="reply-box mt-2" id="reply-box-<?= $c['comment_id'] ?>" style="display:none;"></div>
+
+                    <div class="reply-box mt-2" id="reply-box-<?= (int)$c['comment_id'] ?>" style="display:none;"></div>
+
                     <?php $reply_count = !empty($replies_by_comment[$c['comment_id']]) ? count($replies_by_comment[$c['comment_id']]) : 0; ?>
                     <?php if ($reply_count > 0): ?>
-                        <button class="btn btn-link show-replies-btn p-0 ms-2" data-id="<?= $c['comment_id'] ?>">
+                        <button class="btn btn-link show-replies-btn p-0 ms-2" data-id="<?= (int)$c['comment_id'] ?>">
                             <?= $reply_count ?> Phản hồi
                         </button>
                     <?php endif; ?>
-                    <div class="replies-list ms-4 mt-2" id="replies-list-<?= $c['comment_id'] ?>" style="display:none;">
+
+                    <div class="replies-list ms-4 mt-2" id="replies-list-<?= (int)$c['comment_id'] ?>" style="display:none;">
                         <?php if ($reply_count > 0): ?>
                             <?php foreach ($replies_by_comment[$c['comment_id']] as $r): ?>
                                 <div class="card mb-1 border-info">
@@ -855,8 +802,8 @@ foreach ($all_replies as $r) {
                                             <?php if (!empty($r['edited_at'])): ?> <span class="text-warning ms-2">(Đã chỉnh sửa)</span> <?php endif; ?>
                                         </small>
                                         <p class="mb-1"><?= nl2br(htmlspecialchars($r['content'])) ?></p>
-                                        <button class="btn btn-sm btn-outline-primary like-comment-btn" data-id="<?= $r['comment_id'] ?>">👍 <span class="like-count"><?= $r['like_count'] ?></span></button>
-                                        <button class="btn btn-sm btn-outline-danger dislike-comment-btn" data-id="<?= $r['comment_id'] ?>">👎 <span class="dislike-count"><?= $r['dislike_count'] ?? 0 ?></span></button>
+                                        <button <?= $disabledAttr ?> class="btn btn-sm btn-outline-primary like-comment-btn" data-id="<?= (int)$r['comment_id'] ?>">👍 <span class="like-count"><?= (int)($r['like_count'] ?? 0) ?></span></button>
+                                        <button <?= $disabledAttr ?> class="btn btn-sm btn-outline-danger dislike-comment-btn" data-id="<?= (int)$r['comment_id'] ?>">👎 <span class="dislike-count"><?= (int)($r['dislike_count'] ?? 0) ?></span></button>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
