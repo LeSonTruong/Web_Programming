@@ -1,6 +1,5 @@
 <?php
 include 'includes/db.php';
-include 'includes/header.php';
 date_default_timezone_set('Asia/Ho_Chi_Minh');
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -17,7 +16,7 @@ $khongtuongtac = $khoabinhluan || !isset($_SESSION['user_id']) || empty($_SESSIO
 
 $doc_id = (int)($_POST['doc_id'] ?? $_GET['id'] ?? 0);
 
-// ===== LẤY TAGS CỦA TÀI LIỆU =====
+// ===== LẤY THÔNG TIN TÀI LIỆU =====
 $tagsStmt = $conn->prepare("SELECT t.tag_name FROM document_tags dt JOIN tags t ON dt.tag_id = t.tag_id WHERE dt.doc_id = ?");
 $tagsStmt->execute([$doc_id]);
 $doc_tags = $tagsStmt->fetchAll(PDO::FETCH_COLUMN);
@@ -35,15 +34,24 @@ $stmt = $conn->prepare("
 $stmt->execute([$doc_id]);
 $doc = $stmt->fetch();
 
-// Kiểm tra quyền xem tài liệu
 $has_access = (
     (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ||
     (isset($_SESSION['user_id']) && isset($doc['user_id']) && (int)$doc['user_id'] === (int)$_SESSION['user_id'])
 );
+
 if (!$doc || ($doc['status_id'] != 2 && !$has_access)) {
-    header("Location: not_found");
+    http_response_code(404);
+
+    // Sử dụng __DIR__ để đường dẫn luôn đúng dù file được include từ đâu
+    if (file_exists(__DIR__ . '/!404.php')) {
+        include __DIR__ . '/!404.php';
+    } else {
+        echo '404 Not Found';
+    }
     exit;
 }
+
+include 'includes/header.php';
 
 // Tăng lượt xem mỗi lần truy cập
 if ($doc_id) {
@@ -239,9 +247,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_GET['edit_comment'])) {
 </script>
 <?php
 date_default_timezone_set('Asia/Ho_Chi_Minh');
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
 include 'includes/db.php';
 
 

@@ -1,17 +1,26 @@
 <?php
-include 'includes/header.php';
 include 'includes/db.php';
 
-// ====== KIỂM TRA ĐĂNG NHẬP ======
+session_start();
+
+$stmt = $conn->prepare("SELECT upload_locked FROM users WHERE user_id = ? LIMIT 1");
+$stmt->execute([$_SESSION['user_id']]);
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// ====== KIỂM TRA QUYỀN ======
 if (!isset($_SESSION['user_id'])) {
-    echo '<div class="container my-5">
-            <div class="alert alert-warning text-center">
-                ⚠️ Tạo tài khoản hoặc đăng nhập đi bạn ÊYYYYY!
-            </div>
-          </div>';
-    include 'includes/footer.php';
+    http_response_code(403);
+    $reason = 'chuadangnhap';
+    include __DIR__ . '/!403.php';
+    exit();
+} elseif ($user && (int)($user['upload_locked'] ?? 0) === 1) {
+    http_response_code(403);
+    $reason = 'camtailen';
+    include __DIR__ . '/!403.php';
     exit();
 }
+
+include 'includes/header.php';
 
 // Hàm sinh summary đơn giản
 function generateSummary($text)

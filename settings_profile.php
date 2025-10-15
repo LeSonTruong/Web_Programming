@@ -3,29 +3,7 @@ include 'includes/header.php';
 require_once "includes/db.php";
 
 require_once __DIR__ . '/vendor/autoload.php';
-
-function sendMail($to, $subject, $body)
-{
-    $mail = new PHPMailer\PHPMailer\PHPMailer(true);
-    try {
-        $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';
-        $mail->SMTPAuth = true;
-        $mail->Username = getenv('MAIL_USERNAME');
-        $mail->Password = getenv('MAIL_PASSWORD');
-        $mail->SMTPSecure = 'tls';
-        $mail->Port = 587;
-        $mail->setFrom('lesontruong.official@gmail.com', 'Document System');
-        $mail->addAddress($to);
-        $mail->isHTML(true);
-        $mail->Subject = $subject;
-        $mail->Body = $body;
-        return $mail->send();
-    } catch (Exception $e) {
-        error_log('Mail error: ' . $mail->ErrorInfo . ' | Exception: ' . $e->getMessage());
-        return false;
-    }
-}
+require_once __DIR__ . '/includes/send_mail.php';
 
 if (!isset($_SESSION['user_id'])) {
     echo '<div class="container my-5">
