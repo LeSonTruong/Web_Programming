@@ -1,4 +1,5 @@
 <?php
+// Trả về mã lỗi HTTP 404
 http_response_code(404);
 
 session_start();
@@ -9,17 +10,16 @@ include 'includes/header.php';
     <div class="row justify-content-center">
         <div class="col-md-8 col-lg-6">
             <div class="error-page">
-                <!-- Icon lỗi 404 -->
                 <div class="error-icon mb-4">
                     <img src="assets/404.2.png" alt="Yanfei thinking brr" style="max-width:180px;" class="mb-3">
-                    <div class="display-1 text-danger fw-bold">404</div>
+                    <div class="display-1 text-danger fw-bold">403</div>
                 </div>
                 
                 <!-- Thông báo lỗi -->
-                <h2 class="h3 mb-3 text-danger">Trang không tồn tại!</h2>
+                <h2 class="h3 mb-3 text-danger">Bạn không có quyền truy cập trang này!</h2>
                 <p class="mb-4">
-                    Xin lỗi, trang bạn đang tìm kiếm không tồn tại hoặc đã bị xóa. 
-                    Vui lòng kiểm tra lại đường dẫn hoặc quay về trang chủ.
+                    Xin lỗi, bạn không có quyền truy cập vào trang này. 
+                    Vui lòng kiểm tra lại quyền truy cập của bạn hoặc quay về trang chủ.
                 </p>
                 
                 <!-- Nút điều hướng -->
@@ -27,7 +27,7 @@ include 'includes/header.php';
                     <button onclick="history.back()" class="btn btn-outline-primary">
                         ← Quay lại trang trước
                     </button>
-                    <a href="/index.php" class="btn btn-primary">
+                    <a href="index.php" class="btn btn-primary">
                         🏠 Về trang chủ
                     </a>
                 </div>
