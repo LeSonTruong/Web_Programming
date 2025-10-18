@@ -20,7 +20,7 @@ include 'includes/header.php';
             <div>
                 <div class="mb-4">
                     <img src="<?php echo $BASE_URL; ?>/assets/403.<?= rand(1,2) ?>.png" alt="Không cho!" style="max-width:180px;" class="mb-3">
-                    <div class="display-1 text-warning fw-bold">403</div>
+                    <!--<div class="display-1 text-warning fw-bold">403</div>-->
                 </div>
                 <h2 class="h3 mb-3 text-warning">Không có quyền!</h2>
                 <p class="mb-3">

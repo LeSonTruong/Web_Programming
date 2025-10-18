@@ -54,7 +54,6 @@ if ($user['user_id'] == $_SESSION['user_id']) {
     $_SESSION['avatar'] = $user['avatar'] ?? 'default.png';
     $_SESSION['display_name'] = $user['display_name'] ?? $user['username'];
 }
-
 ?>
 
 <div class="container py-4">

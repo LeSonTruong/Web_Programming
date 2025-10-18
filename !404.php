@@ -13,7 +13,7 @@ include 'includes/header.php';
                 <!-- Icon lỗi 404 -->
                 <div class="mb-4">
                     <img src="<?php echo $BASE_URL; ?>/assets/404.<?= rand(1,3) ?>.png" alt="Yanfei thinking brr" style="max-width:180px;" class="mb-3">
-                    <div class="display-1 text-danger fw-bold">404</div>
+                    <!--<div class="display-1 text-danger fw-bold">404</div>-->
                 </div>
                 
                 <!-- Thông báo lỗi -->

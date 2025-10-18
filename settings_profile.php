@@ -91,7 +91,7 @@ if (isset($_POST['send_phone_otp'])) {
         $stmt = $conn->prepare("UPDATE users SET phone=?, otp_code=?, otp_expiry=? WHERE user_id=?");
         $stmt->execute([$phone, $otp, $expiry, $user_id]);
 
-        $success = "OTP đã được gửi tới số điện thoại $phone";
+        $success = "[Test] OTP đã được gửi tới số điện thoại $phone";
         $show_phone_verify = true;
     }
 }

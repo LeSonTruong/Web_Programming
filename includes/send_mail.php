@@ -41,7 +41,7 @@ function sendMail(string $to, string $subject, string $body, array $opts = []): 
 		return true;
 	} catch (Exception $e) {
 		// Log server-side, but don't echo to users
-		error_log(sprintf('Mail send failed: %s; PHPMailer error: %s', $e->getMessage(), $mail->ErrorInfo ?? ''));
+		error_log(message: sprintf('Mail send failed: %s; PHPMailer error: %s', $e->getMessage(), $mail->ErrorInfo ?? ''));
 		return false;
 	}
 }
