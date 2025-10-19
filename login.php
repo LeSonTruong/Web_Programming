@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($user && password_verify($password, $user['password'])) {
         // Kiểm tra tài khoản có bị banned không
         if ($user['banned'] == 1) {
-            $error = "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên!";
+            $error = "Tài khoản của bạn đã bị khóa.";
         } else {
             $_SESSION['user_id'] = $user['user_id'];
             $_SESSION['fullname'] = $user['fullname'];
@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             exit();
         }
     } else {
-        $error = "Tên đăng nhập/Email hoặc mật khẩu không đúng!";
+        $error = "Thông tin đăng nhập không chính xác!";
     }
 }
 

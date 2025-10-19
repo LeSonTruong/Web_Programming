@@ -27,10 +27,7 @@ include 'includes/header.php';
                     <?php
                     switch ($reason) {
                         case 'chuadangnhap':
-                            echo 'Bạn cần đăng nhập để truy cập trang này.';
-                            break;
-                        case 'khongduquyen':
-                            echo 'Tài khoản của bạn không có quyền thực hiện hành động này.';
+                            echo 'Bạn cần đăng nhập để thực hiện hành động này.';
                             break;
                         case 'camtailen':
                             echo 'Tài khoản của bạn đã bị khóa quyền tải lên.';

@@ -48,7 +48,7 @@ include 'includes/header.php';
             WHERE d.status_id = 2
             GROUP BY d.doc_id
             ORDER BY d.upload_date DESC
-            LIMIT 5
+            LIMIT 6
         ");
             $docs = $stmt->fetchAll();
 

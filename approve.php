@@ -1,27 +1,23 @@
 <?php
-include 'includes/header.php';
 include 'includes/db.php';
-include 'includes/ai.php'; // Gọi các hàm createSummary(), createEmbedding()
 
-// ====== HÀM LOG AI ======
-function logAI($conn, $doc_id, $action, $status, $message = '')
-{
-    $stmt = $conn->prepare("INSERT INTO ai_logs (doc_id, action, status, message) VALUES (?, ?, ?, ?)");
-    $stmt->execute([$doc_id, $action, $status, $message]);
-}
+session_start();
 
-// ====== KIỂM TRA QUYỀN ADMIN ======
-if (!isset($_SESSION['role']) || $_SESSION['role'] != 'admin') {
-    echo '<div class="alert alert-danger">Bạn không có quyền truy cập trang này!</div>';
-    include 'includes/footer.php';
+// ====== KIỂM TRA QUYỀN ======
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+    http_response_code(403);
+    $reason = '';
+    include __DIR__ . '/!403.php';
     exit();
 }
 
+include 'includes/header.php';
+
 // ====== ĐẾM SỐ BÀI ĐANG CHỜ DUYỆT ======
-$pending_count = $conn->query("SELECT COUNT(*) FROM documents WHERE status_id=1")->fetchColumn();
+/*$pending_count = $conn->query("SELECT COUNT(*) FROM documents WHERE status_id=1")->fetchColumn();
 if ($pending_count > 0) {
     echo "<div class='alert alert-info'>Hiện có $pending_count tài liệu đang chờ duyệt.</div>";
-}
+}*/
 
 // ====== DUYỆT TÀI LIỆU ======
 if (isset($_GET['approve'])) {
@@ -41,28 +37,16 @@ if (isset($_GET['approve'])) {
             $textContent = $doc['description'] ?: $doc['title'];
             $textContent = mb_substr($textContent, 0, 5000);
 
-            // Tạo summary & embedding
-            $summary = createSummary($textContent);
-            $embedding = createEmbedding($textContent);
-
-            // Lưu summary và cập nhật trạng thái
-            $stmt = $conn->prepare("UPDATE documents SET status_id=2, summary=? WHERE doc_id=?");
-            $stmt->execute([$summary, $doc_id]);
-            logAI($conn, $doc_id, 'summary', 'success', 'Tóm tắt thành công');
-
-            // Lưu embedding
-            if (!empty($embedding)) {
-                $stmt = $conn->prepare("INSERT INTO document_embeddings (doc_id, vector) VALUES (?, ?)");
-                $stmt->execute([$doc_id, json_encode($embedding)]);
-                logAI($conn, $doc_id, 'embedding', 'success', 'Embedding thành công');
-            }
+            // cập nhật trạng thái
+            $stmt = $conn->prepare("UPDATE documents SET status_id=2 WHERE doc_id=?");
+            $stmt->execute([$doc_id]);
 
             // Tạo thông báo cho user
             $stmt_notif = $conn->prepare("INSERT INTO notifications (user_id, message) VALUES (?, ?)");
             $message = "✅ Tài liệu '{$doc['title']}' của bạn đã được duyệt!";
             $stmt_notif->execute([$doc['user_id'], $message]);
 
-            echo '<div class="alert alert-success">✅ Tài liệu đã được duyệt, tóm tắt & embedding đã lưu.</div>';
+            echo '<div class="alert alert-success">✅ Tài liệu đã được duyệt.</div>';
         }
     }
 }
@@ -82,7 +66,7 @@ if (isset($_GET['reject'])) {
         $message = "❌ Tài liệu '{$doc['title']}' của bạn đã bị từ chối!";
         $stmt_notif->execute([$doc['user_id'], $message]);
 
-        echo '<div class="alert alert-danger">❌ Tài liệu đã bị từ chối.</div>';
+        echo '<div class="alert alert-danger">❌ Đã từ chối tài liệu.</div>';
     }
 }
 

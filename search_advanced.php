@@ -9,7 +9,6 @@ include 'vendor/autoload.php';
 $search = isset($_GET['q']) ? trim($_GET['q']) : '';
 $subject = isset($_GET['subject']) ? intval($_GET['subject']) : null;
 $department = isset($_GET['department']) ? trim($_GET['department']) : '';
-$filetype = isset($_GET['filetype']) ? trim($_GET['filetype']) : '';
 $sortby = isset($_GET['sortby']) ? $_GET['sortby'] : '';
 $selected_tags = isset($_GET['tags']) ? (array)$_GET['tags'] : [];
 
@@ -103,9 +102,9 @@ $tags = $conn->query("SELECT tag_id, tag_name FROM tags ORDER BY tag_name")->fet
 // Khởi tạo biến dùng chung cho phần đếm / params để tránh "undefined variable"
 $countSql = '';
 $countParams = [];
-if ($search !== '' || $subject || $department || $filetype || $sortby || !empty($selected_tags)) {
+if ($search !== '' || $subject || $department || $sortby || !empty($selected_tags)) {
     // Nếu chỉ có keyword, không filter khác
-    if (!$subject && !$department && !$filetype && !$sortby && empty($selected_tags) && $search) {
+    if (!$subject && !$department && !$sortby && empty($selected_tags) && $search) {
         $sql = "SELECT d.*, s.subject_name, s.department, u.username,
                        COALESCE(AVG(r.rating),0) as avg_rating,
                        SUM(CASE WHEN r.rating = 1 THEN 1 ELSE 0 END) AS positive_count,
@@ -155,10 +154,6 @@ if ($search !== '' || $subject || $department || $filetype || $sortby || !empty(
             $sql .= " AND s.department = :department";
             $params[':department'] = $department;
         }
-        if ($filetype) {
-            $sql .= " AND d.document_type = :filetype";
-            $params[':filetype'] = $filetype;
-        }
         if (!empty($selected_tags)) {
             $tagPlaceholders = [];
             foreach ($selected_tags as $idx => $tag_id) {
@@ -171,6 +166,10 @@ if ($search !== '' || $subject || $department || $filetype || $sortby || !empty(
             $sql .= " AND dt.tag_id IN (" . implode(',', $tagPlaceholders) . ")";
         }
         $sql .= " GROUP BY d.doc_id";
+        // If multiple tags selected, require documents to have ALL selected tags (AND) by using HAVING
+        if (!empty($selected_tags)) {
+            $sql .= " HAVING COUNT(DISTINCT dt.tag_id) = " . count($selected_tags);
+        }
         if ($sortby === 'likes') $sql .= " ORDER BY positive_count DESC";
         elseif ($sortby === 'views') $sql .= " ORDER BY d.views DESC";
         elseif ($sortby === 'downloads') $sql .= " ORDER BY d.downloads DESC";
@@ -192,46 +191,82 @@ if ($search !== '' || $subject || $department || $filetype || $sortby || !empty(
         $stmt->execute();
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Đếm tổng
-        $countSql = "SELECT COUNT(DISTINCT d.doc_id)
-                     FROM documents d
-                     LEFT JOIN subjects s ON d.subject_id = s.subject_id
-                     LEFT JOIN document_tags dt ON d.doc_id = dt.doc_id
-                     WHERE d.status_id=2";
-        $countParams = [];
-        if ($search) {
-            $countSql .= " AND (d.title LIKE :kw OR d.description LIKE :kw)";
-            $countParams[':kw'] = "%$search%";
-        }
-        if ($subject) {
-            $countSql .= " AND d.subject_id = :subject";
-            $countParams[':subject'] = $subject;
-        }
-        if ($department) {
-            $countSql .= " AND s.department = :department";
-            $countParams[':department'] = $department;
-        }
-        
+        // Đếm tổng: when tags are selected we must count documents that have ALL selected tags.
         if (!empty($selected_tags)) {
+            // Use a subquery that selects doc_id grouped and having count = number of selected tags,
+            // then count rows of that subquery for pagination accuracy.
+            $countSql = "SELECT COUNT(*) FROM (
+                         SELECT d.doc_id
+                         FROM documents d
+                         LEFT JOIN subjects s ON d.subject_id = s.subject_id
+                         LEFT JOIN document_tags dt ON d.doc_id = dt.doc_id
+                         WHERE d.status_id=2";
+            if ($search) {
+                $countSql .= " AND (d.title LIKE :kw OR d.description LIKE :kw)";
+                $countParams[':kw'] = "%$search%";
+            }
+            if ($subject) {
+                $countSql .= " AND d.subject_id = :subject";
+                $countParams[':subject'] = $subject;
+            }
+            if ($department) {
+                $countSql .= " AND s.department = :department";
+                $countParams[':department'] = $department;
+            }
+            // reuse the tag placeholders prepared earlier in $countParams
             $tagPlaceholders = [];
             foreach ($selected_tags as $idx => $tag_id) {
                 $tagPlaceholders[] = ":ctag$idx";
                 $countParams[":ctag$idx"] = $tag_id;
             }
             $countSql .= " AND dt.tag_id IN (" . implode(',', $tagPlaceholders) . ")";
-        }
-        $countStmt = $conn->prepare($countSql);
-        $i = 1;
-        foreach ($countParams as $key => $value) {
-            if (is_int($key)) {
-                $countStmt->bindValue($i, $value, PDO::PARAM_INT);
-                $i++;
-            } else {
-                $countStmt->bindValue($key, $value);
+            $countSql .= " GROUP BY d.doc_id HAVING COUNT(DISTINCT dt.tag_id) = " . count($selected_tags) . ") as tmp";
+
+            $countStmt = $conn->prepare($countSql);
+            $i = 1;
+            foreach ($countParams as $key => $value) {
+                if (is_int($key)) {
+                    $countStmt->bindValue($i, $value, PDO::PARAM_INT);
+                    $i++;
+                } else {
+                    $countStmt->bindValue($key, $value);
+                }
             }
+            $countStmt->execute();
+            $totalResults = $countStmt->fetchColumn();
+        } else {
+            // No tag filters: simple count query
+            $countSql = "SELECT COUNT(DISTINCT d.doc_id)
+                         FROM documents d
+                         LEFT JOIN subjects s ON d.subject_id = s.subject_id
+                         LEFT JOIN document_tags dt ON d.doc_id = dt.doc_id
+                         WHERE d.status_id=2";
+            $countParams = [];
+            if ($search) {
+                $countSql .= " AND (d.title LIKE :kw OR d.description LIKE :kw)";
+                $countParams[':kw'] = "%$search%";
+            }
+            if ($subject) {
+                $countSql .= " AND d.subject_id = :subject";
+                $countParams[':subject'] = $subject;
+            }
+            if ($department) {
+                $countSql .= " AND s.department = :department";
+                $countParams[':department'] = $department;
+            }
+            $countStmt = $conn->prepare($countSql);
+            $i = 1;
+            foreach ($countParams as $key => $value) {
+                if (is_int($key)) {
+                    $countStmt->bindValue($i, $value, PDO::PARAM_INT);
+                    $i++;
+                } else {
+                    $countStmt->bindValue($key, $value);
+                }
+            }
+            $countStmt->execute();
+            $totalResults = $countStmt->fetchColumn();
         }
-        $countStmt->execute();
-        $totalResults = $countStmt->fetchColumn();
     }
 }
 ?>
@@ -278,7 +313,7 @@ if ($search !== '' || $subject || $department || $filetype || $sortby || !empty(
             <?php for ($i = 1; $i <= ceil($totalResults / $limit); $i++): ?>
                 <li class="page-item <?php echo $i == $page ? 'active' : ''; ?>">
                     <a class="page-link"
-                        href="?q=<?php echo urlencode($search); ?>&subject=<?php echo $subject; ?>&department=<?php echo urlencode($department); ?>&filetype=<?php echo $filetype; ?>&sortby=<?php echo $sortby; ?>&<?php echo http_build_query(['tags' => $selected_tags]); ?>&page=<?php echo $i; ?>">
+                        href="?q=<?php echo urlencode($search); ?>&subject=<?php echo $subject; ?>&department=<?php echo urlencode($department); ?>&sortby=<?php echo $sortby; ?>&<?php echo http_build_query(['tags' => $selected_tags]); ?>&page=<?php echo $i; ?>">
                         <?php echo $i; ?>
                     </a>
                 </li>

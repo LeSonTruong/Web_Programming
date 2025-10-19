@@ -3,45 +3,65 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
-function sendMail(string $to, string $subject, string $body, array $opts = []): bool
-{
-	// Create PHPMailer instance
-	$mail = new PHPMailer(true);
+require_once __DIR__ . '/../vendor/autoload.php';
 
-	try {
-		// Server settings
-		$mail->isSMTP();
-	    $mail->Host       = $opts['host'] ?? getenv('MAIL_HOST') ?: 'smtp.gmail.com';
-		$mail->SMTPAuth   = true;
-		$mail->Username   = $opts['username'] ?? getenv('MAIL_USERNAME');
-		$mail->Password   = $opts['password'] ?? getenv('MAIL_PASSWORD');
-	    $mail->SMTPSecure = $opts['secure'] ?? getenv('MAIL_ENCRYPTION') ?: PHPMailer::ENCRYPTION_STARTTLS;
-	    $mail->Port       = $opts['port'] ?? (getenv('MAIL_PORT') ?: 587);
+if (file_exists(__DIR__ . '/.env')) {
+    try {
+        $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+        $dotenv->safeLoad();
+    } catch (Exception $e) {
+        // ignore if dotenv not installed or failed
+        error_log('Dotenv load error: ' . $e->getMessage());
+    }
+}
 
-		// Optional: allow setting a different from address via env or opts
-		$fromAddress = $opts['from'] ?? getenv('MAIL_FROM_ADDRESS') ?: getenv('MAIL_USERNAME') ?: 'noreply@example.com';
-		$fromName    = $opts['from_name'] ?? getenv('MAIL_FROM_NAME') ?: 'StudyShare';
+// Helper to read and normalize env vars (supports getenv and $_ENV).
+function get_env_var($k) {
+    $v = getenv($k);
+    if ($v === false && isset($_ENV[$k])) $v = $_ENV[$k];
+    if ($v === false || $v === null) return null;
+    $v = trim($v);
+    // strip surrounding single/double quotes if present
+    if ((strlen($v) >= 2) && (($v[0] === '"' && $v[strlen($v)-1] === '"') || ($v[0] === "'" && $v[strlen($v)-1] === "'"))) {
+        $v = substr($v, 1, -1);
+    }
+    return $v;
+}
 
-		if (!empty($opts['debug'])) {
-			$mail->SMTPDebug = SMTP::DEBUG_SERVER;
-			$mail->Debugoutput = function($str, $level) {
-				error_log(sprintf('PHPMailer debug [%s]: %s', $level, $str));
-			};
-		}
+function gui_email(String $email_nhan, String $tieu_de_mail, String $noi_dung_mail) {
+    $mailUsername = get_env_var('MAIL_USERNAME');
+    $mailPassword = get_env_var('MAIL_PASSWORD');
 
-		$mail->setFrom($fromAddress, $fromName);
-		$mail->addAddress($to);
+    $mail = new PHPMailer(true);
 
-		// Content
-		$mail->isHTML(true);
-		$mail->Subject = $subject;
-		$mail->Body    = $body;
+    try {
+        // Server settings
+        $mail->isSMTP();
+        $mailHost = get_env_var('MAIL_HOST') ?: 'smtp.gmail.com';
+        $mail->Host = $mailHost;
+        $mail->SMTPAuth = true;
+        $mail->Username = $mailUsername;
+        $mail->Password = $mailPassword;
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = get_env_var('MAIL_PORT') ? (int)get_env_var('MAIL_PORT') : 587;
 
-		$mail->send();
-		return true;
-	} catch (Exception $e) {
-		// Log server-side, but don't echo to users
-		error_log(message: sprintf('Mail send failed: %s; PHPMailer error: %s', $e->getMessage(), $mail->ErrorInfo ?? ''));
-		return false;
-	}
+        $fromAddress = get_env_var('MAIL_FROM_ADDRESS') ?: 'no-reply@example.com';
+        $fromName = get_env_var('MAIL_FROM_NAME') ?: 'StudyShare';
+        $mail->CharSet = 'UTF-8';
+        $mail->Encoding = 'base64';
+        $mail->setFrom($fromAddress, $fromName);
+        $mail->addAddress($email_nhan);
+
+        $mail->isHTML(true);
+        $mail->Subject = $tieu_de_mail;
+        $mail->Body = $noi_dung_mail;
+
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        $msg = $e->getMessage();
+        error_log('Mail send failed: ' . $msg);
+        $GLOBALS['send_mail_last_error'] = $msg;
+        return false;
+    }
 }

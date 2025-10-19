@@ -1,17 +1,17 @@
 <?php
-include 'includes/header.php';
 include 'includes/db.php';
 
-// ====== KIỂM TRA QUYỀN ADMIN ======
+session_start();
+
+// ====== KIỂM TRA QUYỀN ======
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    echo '<div class="container my-5">
-            <div class="alert alert-danger text-center">
-                ⚠️ Bạn không có quyền truy cập trang này!
-            </div>
-          </div>';
-    include 'includes/footer.php';
+    http_response_code(403);
+    $reason = '';
+    include __DIR__ . '/!403.php';
     exit();
 }
+
+include 'includes/header.php';
 
 // ====== XỬ LÝ HÀNH ĐỘNG ADMIN ======
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

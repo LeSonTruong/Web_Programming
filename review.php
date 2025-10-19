@@ -2,14 +2,11 @@
 session_start();
 include 'includes/db.php';
 
-// ====== KIỂM TRA ĐĂNG NHẬP ======
+// ====== KIỂM TRA QUYỀN ======
 if (!isset($_SESSION['user_id'])) {
-    echo '<div class="container my-5">
-            <div class="alert alert-warning text-center">
-                ⚠️ Tạo tài khoản hoặc đăng nhập đi bạn ÊYYYYY!
-            </div>
-          </div>';
-    include 'includes/footer.php';
+    http_response_code(403);
+    $reason = 'chuadangnhap';
+    include __DIR__ . '/!403.php';
     exit();
 }
 

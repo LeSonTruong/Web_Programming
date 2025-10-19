@@ -1,19 +1,18 @@
 <?php
-include 'includes/header.php';
+session_start();
 require_once "includes/db.php";
+
+if (!isset($_SESSION['user_id'])) {
+    http_response_code(403);
+    $reason = 'chuadangnhap';
+    include __DIR__ . '/!403.php';
+    exit();
+}
+
+include 'includes/header.php';
 
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/includes/send_mail.php';
-
-if (!isset($_SESSION['user_id'])) {
-    echo '<div class="container my-5">
-            <div class="alert alert-warning text-center">
-                ⚠️ Tạo tài khoản hoặc đăng nhập đi bạn ÊYYYYY!
-            </div>
-          </div>';
-    include 'includes/footer.php';
-    exit();
-}
 
 $user_id = $_SESSION['user_id'];
 
@@ -57,11 +56,22 @@ if (isset($_POST['change_email'])) {
         $stmt = $conn->prepare("UPDATE users SET email_verification_code=?, email_verified=0, email=? WHERE user_id=?");
         $stmt->execute([$otp, $new_email, $user_id]);
 
-        if (function_exists('sendMail') && sendMail($new_email, "Xác nhận email", "Mã OTP của bạn là: <b>$otp</b>")) {
-            $success = "OTP đã được gửi tới $new_email. Nhập OTP để xác nhận.";
-            $show_email_verify = true;
+        if (function_exists('gui_email')) {
+            $sent = gui_email($new_email, "StudyShare - Xác nhận email", "Mã OTP của bạn là: <b>$otp</b>");
+            if ($sent) {
+                $success = "OTP đã được gửi tới $new_email. Nhập OTP để xác nhận.";
+                $show_email_verify = true;
+            } else {
+                $lastErr = $GLOBALS['send_mail_last_error'] ?? null;
+                if ($lastErr) {
+                    $safe = htmlspecialchars($lastErr);
+                    $error = "Không thể gửi email. Lỗi: " . $safe;
+                } else {
+                    $error = "Không thể gửi email. Vui lòng thử lại.";
+                }
+            }
         } else {
-            $error = "Không thể gửi email. Vui lòng thử lại.";
+            $error = "Chức năng gửi email chưa được cấu hình.";
         }
     }
 }

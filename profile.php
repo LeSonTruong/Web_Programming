@@ -1,18 +1,16 @@
 <?php
-include 'includes/header.php';
 require_once "includes/db.php";
 
+session_start();
 
-// Nếu có user_id trên URL thì lấy user đó, nếu không thì lấy user đang đăng nhập
 if (!isset($_SESSION['user_id'])) {
-    echo '<div class="container my-5">
-            <div class="alert alert-warning text-center">
-                ⚠️ Vui lòng đăng nhập để xem trang cá nhân!
-            </div>
-          </div>';
-    include 'includes/footer.php';
+    http_response_code(403);
+    $reason = 'chuadangnhap';
+    include __DIR__ . '/!403.php';
     exit();
 }
+
+include 'includes/header.php';
 
 // Xác định kiểu truy vấn: user_id, username, hoặc chính mình
 
