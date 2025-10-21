@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Cập nhật cơ sở dữ liệu
-    $stmt = $conn->prepare("UPDATE documents SET title=?, description=?, file_path=?, status_id=1 WHERE doc_id=?");
+    $stmt = $conn->prepare("UPDATE documents SET title=?, description=?, file_path=?, status_id=0 WHERE doc_id=?");
     $stmt->execute([$title, $description, $file_path, $doc_id]);
 
     echo '<div class="alert alert-success">✅ Tài liệu đã được cập nhật và gửi lại để duyệt.</div>';

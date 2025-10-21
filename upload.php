@@ -79,27 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Các định dạng được phép upload (PDF, ảnh, file code)
         // Danh sách định dạng được hỗ trợ hiển thị trực tiếp
         $allowed_types = [
-            'pdf',
-            'jpg',
-            'jpeg',
-            'png',
-            'gif',
-            'bmp',
-            'webp',
-            // Các file code
-            'ipynb',
-            'py',
-            'js',
-            'java',
-            'c',
-            'cpp',
-            'html',
-            'css',
-            'json',
-            'rb',
-            'go',
-            'ts',
-            'php'
+            'pdf'
         ];
 
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
@@ -190,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $summary,
                         $status_id
                     ]);
-                    $success = "✅ Tải lên thành công, chờ admin duyệt.";
+                    $success = "✅ Tải lên thành công, chờ duyệt.";
                 } catch (PDOException $e) {
                     $error = "❌ Lỗi khi lưu tài liệu: " . htmlspecialchars($e->getMessage());
                     $error_is_html = false;

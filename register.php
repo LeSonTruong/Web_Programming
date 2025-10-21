@@ -23,14 +23,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // 2. Kiểm tra định dạng email
     elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = "Địa chỉ email không hợp lệ!";
-    } else {
-        // 3. Kiểm tra username / email đã tồn tại chưa
+    }
+    // 3. Kiểm tra mật khẩu mạnh
+    elseif (strlen($password_raw) < 6 || !preg_match('/[A-Z]/', $password_raw) || !preg_match('/[a-z]/', $password_raw)) {
+        $error = "Mật khẩu phải có ít nhất 6 ký tự, gồm ít nhất 1 chữ hoa và 1 chữ thường!";
+    }
+    else {
+        // 4. Kiểm tra username / email đã tồn tại chưa
         $check = $conn->prepare("SELECT COUNT(*) FROM users WHERE email = ? OR username = ?");
         $check->execute([$email, $username]);
         if ($check->fetchColumn() > 0) {
             $error = "Tên đăng nhập hoặc email đã tồn tại!";
         } else {
-            // 4. Hash mật khẩu và insert
+            // 5. Hash mật khẩu và insert
             $password = password_hash($password_raw, PASSWORD_DEFAULT);
 
             $stmt = $conn->prepare("INSERT INTO users (fullname, username, email, password, role, created_at) 

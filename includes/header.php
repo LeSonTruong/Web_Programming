@@ -215,11 +215,11 @@ if ($BASE_URL === '' || $BASE_URL === '.') {
                                 <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/settings_profile.php">⚙️ Cài đặt tài khoản</a></li>
                                 <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/my_documents.php">📄 Quản lý tài liệu</a></li>
                                 <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/notifications.php">🔔 Thông báo (<?= $notifications_count ?>)</a></li>
+                                <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/downloads.php">📥 Lịch sử tải về</a></li>
 
                                 <?php if ($_SESSION['role'] === 'admin'): ?>
                                     <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/user.php">👥 Quản lý tài khoản</a></li>
                                     <li><a class="dropdown-item text-warning" href="<?php echo $BASE_URL; ?>/ai_logs.php">📜 AI Logs</a></li>
-                                    <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/downloads.php">📥 Lịch sử tải về</a></li>
                                 <?php endif; ?>
 
                                 <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/logout.php">🚪 Đăng xuất</a></li>
