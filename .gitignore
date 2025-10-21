@@ -13,6 +13,7 @@ ai_service/__pycache__/
 
 # AI Models (Large files)
 ai_service/models/
+DocProcessCopy/
 
 # User uploaded files
 uploads/*

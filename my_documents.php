@@ -1,7 +1,6 @@
 <?php
 include 'includes/header.php';
 include 'includes/db.php';
-include 'includes/ai.php'; // nếu cần tạo summary/embedding
 
 // ====== KIỂM TRA ĐĂNG NHẬP ======
 if (!isset($_SESSION['user_id'])) {
@@ -27,8 +26,6 @@ if (isset($_GET['delete'])) {
 
     if ($doc && ($is_admin || $doc['user_id'] == $user_id)) {
         if (file_exists($doc['file_path'])) unlink($doc['file_path']);
-        $stmt = $conn->prepare("DELETE FROM document_embeddings WHERE doc_id=?");
-        $stmt->execute([$doc_id]);
         $stmt = $conn->prepare("DELETE FROM documents WHERE doc_id=?");
         $stmt->execute([$doc_id]);
         echo '<div class="alert alert-success">✅ Tài liệu đã được xóa.</div>';

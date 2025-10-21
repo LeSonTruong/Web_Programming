@@ -15,6 +15,12 @@ require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/includes/send_mail.php';
 
 $user_id = $_SESSION['user_id'];
+if (isset($_GET['id']) && isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
+    $get_id = (int)$_GET['id'];
+    if ($get_id > 0) {
+        $user_id = $get_id;
+    }
+}
 
 // Lấy thông tin user
 $stmt = $conn->prepare("SELECT * FROM users WHERE user_id=?");

@@ -337,15 +337,13 @@ $dislike_sort = ($_GET['dislike_sort'] ?? '') === 'desc' ? 'DESC' : (($_GET['dis
 $search_user = trim($_GET['search_user'] ?? '');
 
 // Lấy tổng số bình luận
-$countStmt = $conn->prepare("SELECT COUNT(*) FROM comments WHERE doc_id=?");
+$countStmt = $conn->prepare("SELECT COUNT(*) FROM comments WHERE doc_id=? AND parent_comment_id IS NULL");
 $countStmt->execute([$doc_id]);
-$total_comments = (int)$countStmt->fetchColumn();
-$total_comment_pages = max(1, ceil($total_comments / $comments_per_page));
+$total_parent_comments = (int)$countStmt->fetchColumn();
+$total_comment_pages = max(1, ceil($total_parent_comments / $comments_per_page));
 
 
 // Lấy bình luận + số lượt like, reply dạng cây
-
-
 $order_by = [];
 if ($like_sort) $order_by[] = "like_count $like_sort";
 if ($dislike_sort) $order_by[] = "dislike_count $dislike_sort";
@@ -434,7 +432,9 @@ foreach ($all_replies as $r) {
                         </div>
                 <?php else: ?>
                     <span class="text-muted no-tag-text">Chưa có tag</span>
-                    <button id="add-tag-btn" class="btn btn-success btn-sm ms-2 px-2 py-1" style="font-size:1em;">+</button>
+                    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                        <button id="add-tag-btn" class="btn btn-success btn-sm ms-2 px-2 py-1" style="font-size:1em;">+</button>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
 
@@ -701,7 +701,7 @@ foreach ($all_replies as $r) {
 
     <?php if (isset($_SESSION['user_id'])): ?>
         <?php if ($khoabinhluan): ?>
-            <div class="alert alert-warning mb-3">⚠️ Tài khoản của bạn đã bị khóa bình luận — bạn không thể gửi, sửa hoặc tương tác với bình luận.</div>
+            <div class="alert alert-warning mb-3">⚠️ Tài khoản của bạn đã bị khóa bình luận: bạn không thể gửi, sửa hoặc tương tác với bình luận.</div>
         <?php else: ?>
             <?php if (isset($edit_comment) && $edit_comment && $edit_comment['user_id'] == $_SESSION['user_id']): ?>
                 <form method="post" class="mb-4">
