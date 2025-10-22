@@ -130,6 +130,7 @@ if ($BASE_URL === '' || $BASE_URL === '.') {
 
         .dropdown-menu a:hover {
             background-color: #444444;
+            color: #ffffff;
         }
 
         /* ==== Ô tìm kiếm ==== */
