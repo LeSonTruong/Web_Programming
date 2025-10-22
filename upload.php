@@ -348,7 +348,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <input type="file" name="document" class="form-control" id="document-input" required>
                     <div id="file-warning-area" class="mt-2"></div>
                     <small class="text-muted d-block mt-2">
-                        🔹 Chỉ cho phép: <strong>PDF</strong>, ảnh (jpg, png, gif), hoặc file code.<br>
+                        🔹 Chỉ cho phép tải lên file <strong>PDF</strong>.<br>
                         ❌ Nếu bạn có file Word/Excel/PowerPoint (.docx, .pptx, .xlsx, ...) — <strong>vui lòng chuyển sang PDF</strong> trước khi upload.
                     </small>
 
