@@ -38,11 +38,11 @@ $show_phone_verify = false;
 // ===== Đổi Display Name =====
 if (isset($_POST['change_display'])) {
     $new_display = trim($_POST['display_name']);
-    $last_change = $user['last_display_change'];
+    $last_change = $user['last_name_change'];
     if ($last_change && strtotime($last_change) > strtotime('-30 days')) {
         $error = "Bạn chỉ có thể đổi tên hiển thị sau 30 ngày!";
     } else {
-        $stmt = $conn->prepare("UPDATE users SET display_name=?, last_display_change=NOW() WHERE user_id=?");
+        $stmt = $conn->prepare("UPDATE users SET display_name=?, last_name_change=NOW() WHERE user_id=?");
         $stmt->execute([$new_display, $user_id]);
         $success = "Tên hiển thị đã được cập nhật!";
         $_SESSION['display_name'] = $new_display;
@@ -161,14 +161,19 @@ if (isset($_POST['change_avatar']) && isset($_FILES['avatar'])) {
     $allowed = ['jpg', 'jpeg', 'png', 'gif'];
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     if ($file['error'] === 0 && in_array($ext, $allowed)) {
-        $newName = "avatar_" . $user_id . "." . $ext;
-        $path = "uploads/avatars/" . $newName;
-        move_uploaded_file($file['tmp_name'], $path);
+        $maxSize = 5 * 1024 * 1024; // 5 MB
+        if ($file['size'] > $maxSize) {
+            $error = "Giới hạn kích cỡ ảnh là 5MB!  ";
+        } else {
+            $newName = "avatar_" . $user_id . "." . $ext;
+            $path = "uploads/avatars/" . $newName;
+            move_uploaded_file($file['tmp_name'], $path);
 
-        $stmt = $conn->prepare("UPDATE users SET avatar=? WHERE user_id=?");
-        $stmt->execute([$newName, $user_id]);
-        $success = "Ảnh đại diện đã được cập nhật!";
-        $_SESSION['avatar'] = $newName;
+            $stmt = $conn->prepare("UPDATE users SET avatar=? WHERE user_id=?");
+            $stmt->execute([$newName, $user_id]);
+            $success = "Ảnh đại diện đã được cập nhật!";
+            $_SESSION['avatar'] = $newName;
+        }
     } else {
         $error = "File không hợp lệ!";
     }
@@ -201,6 +206,11 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 <div class="container mt-4">
     <h2>Quản lý tài khoản</h2>
+
+    <?php if (!empty($_SESSION['flash_verify_success'])): ?>
+        <div class="alert alert-success"><?= htmlspecialchars($_SESSION['flash_verify_success']) ?></div>
+        <?php unset($_SESSION['flash_verify_success']); ?>
+    <?php endif; ?>
 
     <?php if ($error): ?>
         <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
@@ -238,17 +248,11 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
                 <span class="badge bg-warning">Chưa xác thực</span>
             <?php endif; ?>
         </p>
-        <form method="POST">
-            <input type="email" name="email" class="form-control mb-2" value="<?= htmlspecialchars($user['email']) ?>" required>
-            <button type="submit" name="change_email" class="btn btn-primary">Gửi OTP xác nhận Email</button>
+        <form method="POST" action="verify.php">
+            <input type="hidden" name="method" value="email">
+            <input type="hidden" name="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>">
+            <button type="submit" class="btn btn-primary">Xác thực Email</button>
         </form>
-
-        <?php if ($show_email_verify): ?>
-            <form method="POST" class="mt-2">
-                <input type="text" name="email_otp" class="form-control mb-2" placeholder="Nhập OTP" required>
-                <button type="submit" name="verify_email_otp" class="btn btn-success">Xác thực Email</button>
-            </form>
-        <?php endif; ?>
     </div>
 
     <!-- Phone -->
@@ -261,17 +265,11 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
                 <span class="badge bg-warning">Chưa xác thực</span>
             <?php endif; ?>
         </p>
-        <form method="POST">
-            <input type="text" name="phone" class="form-control mb-2" placeholder="Nhập số điện thoại" value="<?= htmlspecialchars($user['phone'] ?? '') ?>" required>
-            <button type="submit" name="send_phone_otp" class="btn btn-primary mb-2">Gửi OTP</button>
-        </form>
-
-        <?php if ($show_phone_verify || !empty($user['otp_code'])): ?>
-            <form method="POST">
-                <input type="text" name="phone_otp" class="form-control mb-2" placeholder="Nhập OTP" required>
-                <button type="submit" name="verify_phone_otp" class="btn btn-success">Xác thực OTP</button>
+            <form method="POST" action="verify.php">
+                <input type="hidden" name="method" value="phone">
+                <input type="hidden" name="phone" value="<?= htmlspecialchars($user['phone'] ?? '') ?>">
+                <button type="submit" class="btn btn-primary">Xác thực SĐT</button>
             </form>
-        <?php endif; ?>
     </div>
 
     <!-- Password -->

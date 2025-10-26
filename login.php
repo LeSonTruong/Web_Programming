@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $error = "Tài khoản của bạn đã bị khóa.";
         } else {
             $_SESSION['user_id'] = $user['user_id'];
-            $_SESSION['fullname'] = $user['fullname'];
+            $_SESSION['display_name'] = $user['display_name'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['display_name'] = $user['display_name'] ?? $user['username'];
             $_SESSION['avatar'] = $user['avatar'] ?? 'default.png';

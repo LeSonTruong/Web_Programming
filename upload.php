@@ -26,7 +26,7 @@ include 'includes/header.php';
 function generateSummary($text)
 {
     $text = strip_tags($text);
-    return strlen($text) > 200 ? mb_substr($text, 0, 200) . "..." : $text;
+    return strlen($text) > 150 ? mb_substr($text, 0, 150) . "..." : $text;
 }
 
 // Lấy danh sách môn học
@@ -127,22 +127,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (move_uploaded_file($file['tmp_name'], $file_path)) {
                 $summary = generateSummary($description);
 
-                // Thumbnail: ảnh -> tự làm thumbnail, file khác -> icon mặc định
-                $thumbnail_path = 'uploads/thumbnails/';
-                if (!is_dir($thumbnail_path)) {
-                    mkdir($thumbnail_path, 0777, true);
-                }
-
-                if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif'])) {
-                    $thumb_file = $thumbnail_path . uniqid() . '.' . $ext;
-                    copy($file_path, $thumb_file); // đơn giản: copy làm thumbnail
-                } else {
-                    $thumb_file = "assets/icons/$ext.png";
-                    if (!file_exists($thumb_file)) {
-                        $thumb_file = "assets/icons/file.png";
-                    }
-                }
-
                 // Document type
                 $doc_type = match ($ext) {
                     'jpg', 'jpeg', 'png', 'gif' => 'image',
@@ -152,9 +136,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 };
 
                 $stmt = $conn->prepare("INSERT INTO documents
-                (user_id, title, author_name, description, subject_id, file_path, thumbnail_path, file_size,
-                 document_type, tags, summary, status_id, upload_date, updated_at, views, downloads)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), 0, 0)");
+                (user_id, title, author_name, description, subject_id, file_path, file_size,
+                 document_type, summary, status_id, upload_date, updated_at, views)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NOW(), NOW(), 0)");
                 try {
                     $stmt->execute([
                         $_SESSION['user_id'],
@@ -163,12 +147,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $description,
                         $subject_id,
                         $file_path,
-                        $thumb_file,
                         $file['size'],
                         $doc_type,
-                        $tags,
                         $summary,
-                        $status_id
                     ]);
                     $success = "✅ Tải lên thành công, chờ duyệt.";
                 } catch (PDOException $e) {

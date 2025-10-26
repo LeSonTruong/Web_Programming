@@ -6,8 +6,8 @@ include 'includes/header.php';
     <!-- Phần chào mừng -->
     <div class="text-center mb-5">
         <h2 class="display-5">
-            <?php if (isset($_SESSION['fullname'])): ?>
-                👋 Xin chào, <?= htmlspecialchars($_SESSION['fullname']) ?>!
+            <?php if (isset($_SESSION['display_name'])): ?>
+                👋 Xin chào, <?= htmlspecialchars($_SESSION['display_name']) ?>!
             <?php else: ?>
                 Chào mừng đến với StudyShare
             <?php endif; ?>

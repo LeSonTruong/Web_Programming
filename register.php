@@ -11,13 +11,13 @@ if (isset($_SESSION['user_id'])) {
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $fullname = trim($_POST['fullname']);
+    $display_name = trim($_POST['display_name']);
     $username = trim($_POST['username']);
     $email = trim($_POST['email']);
     $password_raw = trim($_POST['password']);
 
     // 1. Kiểm tra dữ liệu rỗng
-    if (empty($fullname) || empty($username) || empty($email) || empty($password_raw)) {
+    if (empty($display_name) || empty($username) || empty($email) || empty($password_raw)) {
         $error = "Vui lòng nhập đầy đủ thông tin!";
     }
     // 2. Kiểm tra định dạng email
@@ -38,9 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // 5. Hash mật khẩu và insert
             $password = password_hash($password_raw, PASSWORD_DEFAULT);
 
-            $stmt = $conn->prepare("INSERT INTO users (fullname, username, email, password, role, created_at) 
+            $stmt = $conn->prepare("INSERT INTO users (display_name, username, email, password, role, created_at) 
                                    VALUES (?, ?, ?, ?, 'user', NOW())");
-            if ($stmt->execute([$fullname, $username, $email, $password])) {
+            if ($stmt->execute([$display_name, $username, $email, $password])) {
                 header("Location: login.php");
                 exit();
             } else {
@@ -64,8 +64,8 @@ include 'includes/header.php';
 
         <form method="post">
             <div class="mb-3">
-                <label for="fullname" class="form-label">Họ và tên</label>
-                <input type="text" id="fullname" name="fullname" class="form-control" value="<?= htmlspecialchars($fullname ?? '') ?>" required>
+                <label for="display_name" class="form-label">Họ và tên</label>
+                <input type="text" id="display_name" name="display_name" class="form-control" value="<?= htmlspecialchars($display_name ?? '') ?>" required>
             </div>
 
             <div class="mb-3">
