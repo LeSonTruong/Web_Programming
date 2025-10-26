@@ -14,7 +14,7 @@ include 'includes/header.php';
 
 $user_id = $_SESSION['user_id'];
 
-// ====== KIỂM TRA ROLE ADMIN ======
+// ====== ADMIN ======
 if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
     echo '<div class="container my-5">';
     echo '<h2 class="mb-4">🔔 Thông báo quản trị viên</h2>';
@@ -27,7 +27,6 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
     echo '<div class="mb-3"><strong>🔁 Bình luận vừa được phản hồi (24h):</strong> ' . $recent_replies . '</div>';
     echo '</div>';
 }
-
 
 // ====== Đánh dấu thông báo đã đọc nếu có param mark_read ======
 if (isset($_GET['mark_read'])) {

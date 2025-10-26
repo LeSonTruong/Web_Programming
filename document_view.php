@@ -40,15 +40,9 @@ $has_access = (
 );
 
 if (!$doc || ($doc['status_id'] != 2 && !$has_access)) {
-    http_response_code(404);
-
-    // Sử dụng __DIR__ để đường dẫn luôn đúng dù file được include từ đâu
-    if (file_exists(__DIR__ . '/!404.php')) {
-        include __DIR__ . '/!404.php';
-    } else {
-        echo '404 Not Found';
-    }
-    exit;
+     http_response_code(404);
+    include __DIR__ . '/!404.php';
+    exit();
 }
 
 include 'includes/header.php';
@@ -587,6 +581,11 @@ foreach ($all_replies as $r) {
         </div>
     </div>
     <p><strong>Mô tả:</strong> <?= nl2br(htmlspecialchars($doc['description'] ?? '')) ?></p>
+    <!-- Collapseable summary -->
+    <details style="margin-bottom:10px">
+        <summary style="cursor:pointer;font-weight:bold;color:#007bff">Tóm tắt văn bản</summary>
+        <div style="padding:8px 0 0 16px;white-space:pre-line;"><?= nl2br(htmlspecialchars($doc['summary'] ?? 'Chưa có tóm tắt')) ?></div>
+    </details>
     <p><strong>Đánh giá:</strong> <span id="review-summary-text"><?= $review_summary ?></span> (👍 <span id="like-count"><?= $doc['positive_count'] ?? 0 ?></span> | 👎 <span id="dislike-count"><?= $doc['negative_count'] ?? 0 ?></span>)</p>
     <p><strong>Lượt xem:</strong> <?= number_format($doc['views'] ?? 0) ?></p>
     <p><strong>Lượt tải:</strong> <?= $total_downloads ?></p>

@@ -1,85 +1,167 @@
-from flask import Flask, request, jsonify
-from transformers import AutoTokenizer, MBartForConditionalGeneration
-import torch
+"""
+FastAPI gateway for your App_Caller pipeline.
+
+✅ Giữ nguyên pipeline gốc (App_Caller.py)
+✅ Tương thích Hugging Face Spaces (Docker)
+✅ Có Bearer token, Swagger UI (/docs)
+✅ Endpoint: /, /health, /process_pdf, /search, /summarize
+"""
+
 import os
+import time
+from typing import Optional
 
-app = Flask(__name__)
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Header
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
-# Đường dẫn model
-MODEL_DIR = "./models"
+# -------------------------
+# 🔒 Bearer token (optional)
+# -------------------------
+API_SECRET = os.getenv("API_SECRET", "").strip()
 
-# Load model và tokenizer
-print("Loading model...")
+def require_bearer(authorization: Optional[str] = Header(None)):
+    """Kiểm tra Bearer token nếu bật API_SECRET."""
+    if not API_SECRET:
+        return  # Không bật xác thực
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing Bearer token")
+    token = authorization.split(" ", 1)[1].strip()
+    if token != API_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid token")
+
+# -------------------------
+# 🧩 Import project modules
+# -------------------------
 try:
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
-    model = MBartForConditionalGeneration.from_pretrained(MODEL_DIR)
-    print("Model loaded successfully!")
+    import App_Caller as APP_CALLER
+    print("✅ Đã load App_Caller.")
 except Exception as e:
-    print(f"Error loading model: {e}")
+    APP_CALLER = None
+    print(f"⚠️ Không thể import App_Caller: {e}")
 
-def kiem_duyet_don_gian(text):
-    """Hàm kiểm duyệt cơ bản"""
-    tu_cam = ["bạo lực", "phản động", "spam"]
-    if len(text.strip()) < 10:  # Text quá ngắn
-        return False
-    if any(word in text.lower() for word in tu_cam):
-        return False
-    return True
+# -------------------------
+# 🚀 Init FastAPI
+# -------------------------
+app = FastAPI(
+    title="Document AI API (FastAPI)",
+    version="2.0.0",
+    description="API xử lý PDF: trích xuất, tóm tắt, tìm kiếm, phân loại.",
+)
 
-@app.route('/health', methods=['GET'])
-def health_check():
-    """Endpoint kiểm tra API hoạt động"""
-    return jsonify({"status": "OK", "message": "AI Service is running"})
+# Cho phép gọi API từ web client
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.route('/process', methods=['POST'])
-def process_document():
-    """Endpoint xử lý kiểm duyệt và tóm tắt"""
+# -------------------------
+# 🏠 Root endpoint (tránh 404 trên Spaces)
+# -------------------------
+@app.get("/")
+def root():
+    """Trang chào mừng / kiểm tra trạng thái."""
+    return {
+        "message": "📘 Document AI API đang chạy.",
+        "status": "ok",
+        "docs": "/docs",
+        "endpoints": ["/process_pdf", "/search", "/summarize", "/health"],
+    }
+
+# -------------------------
+# 🩺 /health
+# -------------------------
+@app.get("/health")
+def health(_=Depends(require_bearer)):
+    """Kiểm tra trạng thái hoạt động."""
+    return {
+        "status": "ok",
+        "time": time.time(),
+        "App_Caller": bool(APP_CALLER),
+        "has_fileProcess": hasattr(APP_CALLER, "fileProcess") if APP_CALLER else False,
+    }
+
+# -------------------------
+# 📘 /process_pdf
+# -------------------------
+@app.post("/process_pdf")
+async def process_pdf(file: UploadFile = File(...), _=Depends(require_bearer)):
+    """Nhận file PDF → chạy App_Caller.fileProcess → trả về summary + category."""
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Chỉ chấp nhận file PDF.")
+
+    pdf_bytes = await file.read()
+
+    if not APP_CALLER or not hasattr(APP_CALLER, "fileProcess"):
+        raise HTTPException(status_code=500, detail="Không tìm thấy App_Caller.fileProcess().")
+
     try:
-        data = request.json
-        text = data.get('text', '')
-        lang = data.get('lang', 'vi_VN')  # Mặc định tiếng Việt
-        
-        # Bước 1: Kiểm duyệt
-        if not kiem_duyet_don_gian(text):
-            return jsonify({
-                "success": False,
-                "check_passed": False,
-                "message": "Tài liệu không đạt kiểm duyệt",
-                "summary": None
-            })
-        
-        # Bước 2: Tóm tắt (nếu qua kiểm duyệt)
-        # Giới hạn độ dài input để tránh quá tải
-        max_length = 2500
-        if len(text.split()) > max_length:
-            text = ' '.join(text.split()[:max_length])
-        
-        # Setup tokenizer cho ngôn ngữ đầu vào
-        tokenizer.src_lang = lang
-        
-        # Tokenize và tóm tắt
-        inputs = tokenizer(text, return_tensors="pt", max_length=512, truncation=True)
-        
-        # Generate summary
-        with torch.no_grad():
-            summary_ids = model.generate(inputs.input_ids, max_length=256, min_length=20)
-
-        
-        summary = tokenizer.batch_decode(summary_ids, skip_special_tokens=True)[0]
-        
-        return jsonify({
-            "success": True,
-            "check_passed": True,
-            "message": "Xử lý thành công",
-            "summary": summary
-        })
-        
+        result = APP_CALLER.fileProcess(pdf_bytes)
+        return {
+            "status": "success",
+            "checkstatus": result.get("checkstatus"),
+            "summary": result.get("summary"),
+            "category": result.get("category"),
+            "top_candidates": result.get("reranked", []),
+        }
     except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e),
-            "message": "Lỗi xử lý tài liệu"
-        })
+        raise HTTPException(status_code=500, detail=f"Lỗi xử lý PDF: {str(e)}")
 
-if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=5000, debug=True)
+# -------------------------
+# 🔍 /search
+# -------------------------
+class SearchIn(BaseModel):
+    query: str
+    k: int = 10
+
+@app.post("/search")
+def search(body: SearchIn, _=Depends(require_bearer)):
+    """Tìm kiếm bằng FAISS + Rerank từ App_Caller.runSearch()."""
+    q = (body.query or "").strip()
+    if not q:
+        raise HTTPException(status_code=400, detail="query không được để trống")
+
+    if not APP_CALLER or not hasattr(APP_CALLER, "runSearch"):
+        raise HTTPException(status_code=500, detail="Không tìm thấy App_Caller.runSearch().")
+
+    try:
+        results = APP_CALLER.runSearch(q)
+        if isinstance(results, list):
+            formatted = results[:body.k]
+        elif isinstance(results, dict) and "results" in results:
+            formatted = results["results"][:body.k]
+        else:
+            formatted = [str(results)]
+        return {"status": "success", "results": formatted}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi tìm kiếm: {str(e)}")
+
+# -------------------------
+# 🧠 /summarize
+# -------------------------
+class SummIn(BaseModel):
+    text: str
+    minInput: int = 256
+    maxInput: int = 1024
+
+@app.post("/summarize")
+def summarize_text(body: SummIn, _=Depends(require_bearer)):
+    """Tóm tắt văn bản bằng App_Caller.summarizer_engine."""
+    text = (body.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="text không được để trống")
+
+    if not APP_CALLER or not hasattr(APP_CALLER, "summarizer_engine"):
+        raise HTTPException(status_code=500, detail="Không tìm thấy App_Caller.summarizer_engine.")
+
+    try:
+        summarized = APP_CALLER.summarizer_engine.summarize(
+            text, minInput=body.minInput, maxInput=body.maxInput
+        )
+        return {"status": "success", "summary": summarized.get("summary_text", "")}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi tóm tắt: {str(e)}")

@@ -12,7 +12,7 @@ ai_service/__pycache__/
 *.pyo
 
 # AI Models (Large files)
-ai_service/models/
+ai_service/
 DocProcessCopy/
 
 # User uploaded files
