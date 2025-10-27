@@ -14,23 +14,63 @@ include 'includes/header.php';
 
 $user_id = $_SESSION['user_id'];
 
-// ====== ADMIN ======
+// ====== ADMIN: gửi thông báo tới 1 user ======
+$admin_error = '';
+$admin_success = '';
 if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
-    echo '<div class="container my-5">';
-    echo '<h2 class="mb-4">🔔 Thông báo quản trị viên</h2>';
-    // Duyệt tài liệu
-    $pending_docs = $conn->query("SELECT COUNT(*) FROM documents WHERE status_id=1")->fetchColumn();
-    echo '<div class="mb-3"><strong>✅ Tài liệu chờ duyệt:</strong> ' . $pending_docs . ' <a href="approve.php" class="btn btn-sm btn-primary ms-2">Xem chi tiết</a></div>';
-    // Bình luận được phản hồi
-    $reply_stmt = $conn->query("SELECT COUNT(*) FROM comments WHERE parent_comment_id IS NOT NULL AND created_at >= NOW() - INTERVAL 1 DAY");
-    $recent_replies = $reply_stmt->fetchColumn();
-    echo '<div class="mb-3"><strong>🔁 Bình luận vừa được phản hồi (24h):</strong> ' . $recent_replies . '</div>';
-    echo '</div>';
+    // Handle send notification POST
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_notification'])) {
+        $target_username = trim($_POST['target_username'] ?? '');
+        $notif_message = trim($_POST['notif_message'] ?? '');
+        if ($target_username === '' || $notif_message === '') {
+            $admin_error = 'Vui lòng nhập tên người dùng và nội dung thông báo.';
+        } else {
+            // find user by username
+            $stmt = $conn->prepare("SELECT user_id FROM users WHERE username = ? LIMIT 1");
+            $stmt->execute([$target_username]);
+            $target_id = $stmt->fetchColumn();
+            if (!$target_id) {
+                $admin_error = 'Không tìm thấy người dùng với username đã nhập.';
+            } else {
+                try {
+                    $ins = $conn->prepare("INSERT INTO notifications (user_id, message) VALUES (?, ?)");
+                    $ins->execute([$target_id, $notif_message]);
+                    $admin_success = 'Đã gửi thông báo cho ' . htmlspecialchars($target_username) . '.';
+                } catch (Exception $e) {
+                    $admin_error = 'Lỗi khi gửi thông báo: ' . htmlspecialchars($e->getMessage());
+                }
+            }
+        }
+    }
+
+    ?>
+    <div class="container my-5">
+        <h2 class="mb-4">🔔 Gửi thông báo</h2>
+        <?php if ($admin_error): ?>
+            <div class="alert alert-danger"><?= htmlspecialchars($admin_error) ?></div>
+        <?php elseif ($admin_success): ?>
+            <div class="alert alert-success"><?= htmlspecialchars($admin_success) ?></div>
+        <?php endif; ?>
+
+        <form method="post" class="mb-4">
+            <input type="hidden" name="send_notification" value="1">
+            <div class="mb-2">
+                <label class="form-label">Tên người dùng</label>
+                <input type="text" name="target_username" class="form-control" placeholder="vd: alice" required>
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Nội dung thông báo</label>
+                <textarea name="notif_message" class="form-control" rows="3" placeholder="Nội dung thông báo..." required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Gửi</button>
+        </form>
+    </div>
+    <?php
 }
 
-// ====== Đánh dấu thông báo đã đọc nếu có param mark_read ======
-if (isset($_GET['mark_read'])) {
-    $notif_id = (int)$_GET['mark_read'];
+// ====== Đánh dấu thông báo đã đọc nếu POST mark_read ======
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_read'])) {
+    $notif_id = (int)$_POST['mark_read'];
     $stmt = $conn->prepare("UPDATE notifications SET is_read=1 WHERE notification_id=? AND user_id=?");
     $stmt->execute([$notif_id, $user_id]);
     header("Location: notifications.php");
@@ -58,7 +98,10 @@ $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <small class="text-muted"><?= date('H:i d/m/Y', strtotime($notif['created_at'])) ?></small>
                     </div>
                     <?php if (!$notif['is_read']): ?>
-                        <a href="?mark_read=<?= $notif['notification_id'] ?>" class="btn btn-sm btn-outline-success">Đã đọc</a>
+                        <form method="post" class="d-inline">
+                            <input type="hidden" name="mark_read" value="<?= $notif['notification_id'] ?>">
+                            <button type="submit" class="btn btn-sm btn-outline-success">Đã đọc</button>
+                        </form>
                     <?php endif; ?>
                 </li>
             <?php endforeach; ?>

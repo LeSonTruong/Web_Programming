@@ -12,28 +12,27 @@ if (!isset($_SESSION['user_id'])) {
 include 'includes/header.php';
 
 require_once __DIR__ . '/vendor/autoload.php';
-require_once __DIR__ . '/includes/send_mail.php';
 
 $user_id = $_SESSION['user_id'];
-if (isset($_GET['id']) && isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
-    $get_id = (int)$_GET['id'];
-    if ($get_id > 0) {
-        $user_id = $get_id;
-    }
-}
 
-// Lấy thông tin user
-$stmt = $conn->prepare("SELECT * FROM users WHERE user_id=?");
+// Lấy thông tin user (bao gồm profile mở rộng lưu ở user_profile)
+$stmt = $conn->prepare("SELECT users.*, 
+                user_profile.show_email, user_profile.show_phone, user_profile.show_birthday, 
+                user_profile.show_gender, user_profile.show_facebook, 
+                user_profile.birthday, user_profile.gender, user_profile.facebook
+            FROM users
+            LEFT JOIN user_profile ON users.user_id = user_profile.user_id
+            WHERE users.user_id=?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Đồng bộ avatar & display_name cho header
-$_SESSION['avatar'] = $user['avatar'] ?? 'default.png';
-$_SESSION['display_name'] = $user['display_name'] ?? $user['username'];
+// Đồng bộ avatar & display_name cho header chỉ khi đang chỉnh sửa tài khoản chính mình
+if ($user['user_id'] == ($_SESSION['user_id'] ?? null)) {
+    $_SESSION['avatar'] = $user['avatar'] ?? 'default.png';
+    $_SESSION['display_name'] = $user['display_name'] ?? $user['username'];
+}
 
 $error = $success = '';
-$show_email_verify = false;
-$show_phone_verify = false;
 
 // ===== Đổi Display Name =====
 if (isset($_POST['change_display'])) {
@@ -49,89 +48,13 @@ if (isset($_POST['change_display'])) {
     }
 }
 
-// ===== Đổi Email + OTP =====
-if (isset($_POST['change_email'])) {
-    $new_email = trim($_POST['email']);
-    if (!filter_var($new_email, FILTER_VALIDATE_EMAIL)) {
-        $error = "Email không hợp lệ!";
-    } else {
-        $otp = rand(100000, 999999);
-        $expiry = date("Y-m-d H:i:s", time() + 600); // 10 phút
-
-        // Cập nhật OTP vào DB
-        $stmt = $conn->prepare("UPDATE users SET email_verification_code=?, email_verified=0, email=? WHERE user_id=?");
-        $stmt->execute([$otp, $new_email, $user_id]);
-
-        if (function_exists('gui_email')) {
-            $sent = gui_email($new_email, "StudyShare - Xác nhận email", "Mã OTP của bạn là: <b>$otp</b>");
-            if ($sent) {
-                $success = "OTP đã được gửi tới $new_email. Nhập OTP để xác nhận.";
-                $show_email_verify = true;
-            } else {
-                $lastErr = $GLOBALS['send_mail_last_error'] ?? null;
-                if ($lastErr) {
-                    $safe = htmlspecialchars($lastErr);
-                    $error = "Không thể gửi email. Lỗi: " . $safe;
-                } else {
-                    $error = "Không thể gửi email. Vui lòng thử lại.";
-                }
-            }
-        } else {
-            $error = "Chức năng gửi email chưa được cấu hình.";
-        }
-    }
-}
-
-// ===== Xác thực Email =====
-if (isset($_POST['verify_email_otp'])) {
-    $input_otp = trim($_POST['email_otp']);
-    if ($input_otp == $user['email_verification_code']) {
-        $stmt = $conn->prepare("UPDATE users SET email_verified=1, email_verification_code=NULL WHERE user_id=?");
-        $stmt->execute([$user_id]);
-        $success = "Email đã được xác thực!";
-    } else {
-        $error = "OTP không đúng hoặc đã hết hạn!";
-        $show_email_verify = true;
-    }
-}
-
-// ===== Đổi Số điện thoại + OTP =====
-if (isset($_POST['send_phone_otp'])) {
-    $phone = trim($_POST['phone']);
-    if (!preg_match('/^\+?\d{9,15}$/', $phone)) {
-        $error = "Số điện thoại không hợp lệ!";
-    } else {
-        $otp = rand(100000, 999999);
-        $expiry = date("Y-m-d H:i:s", time() + 600);
-
-        $stmt = $conn->prepare("UPDATE users SET phone=?, otp_code=?, otp_expiry=? WHERE user_id=?");
-        $stmt->execute([$phone, $otp, $expiry, $user_id]);
-
-        $success = "[Test] OTP đã được gửi tới số điện thoại $phone";
-        $show_phone_verify = true;
-    }
-}
-
-// ===== Xác thực OTP Số điện thoại =====
-if (isset($_POST['verify_phone_otp'])) {
-    $input_otp = trim($_POST['phone_otp']);
-    if ($input_otp == $user['otp_code'] && strtotime($user['otp_expiry']) > time()) {
-        $stmt = $conn->prepare("UPDATE users SET otp_code=NULL, otp_expiry=NULL WHERE user_id=?");
-        $stmt->execute([$user_id]);
-        $success = "Số điện thoại đã được xác thực!";
-    } else {
-        $error = "OTP không đúng hoặc đã hết hạn!";
-        $show_phone_verify = true;
-    }
-}
-
 // ===== Đổi Mật khẩu =====
 if (isset($_POST['change_password'])) {
     $current = $_POST['current_password'];
     $new = $_POST['new_password'];
     $confirm = $_POST['confirm_password'];
 
-    // Kiểm tra mật khẩu mạnh (gộp vào 1 if)
+    // Kiểm tra mật khẩu mạnh
     $password_error = '';
     if (
         strlen($new) < 6 ||
@@ -193,13 +116,34 @@ if (isset($_POST['update_extended'])) {
     $show_email = !empty($_POST['show_email']) ? 1 : 0;
     $show_phone = !empty($_POST['show_phone']) ? 1 : 0;
 
-    $stmt = $conn->prepare("UPDATE users SET birthday=?, show_birthday=?, gender=?, show_gender=?, facebook=?, show_facebook=?, show_email=?, show_phone=? WHERE user_id=?");
-    $stmt->execute([$birthday, $show_birthday, $gender, $show_gender, $facebook, $show_facebook, $show_email, $show_phone, $user_id]);
-    $success = "Thông tin cá nhân đã được cập nhật!";
+    // Validate birthday: must not be a future date
+    if (!is_null($birthday)) {
+        $ts = strtotime($birthday);
+        if ($ts === false) {
+            $error = "Ngày sinh không hợp lệ.";
+        } else {
+            $today = strtotime('today');
+            if ($ts > $today) {
+                $error = "Nhà du hành thời gian không được phép sử dụng trang web này.";
+            }
+        }
+    }
+
+    if (empty($error)) {
+        $stmt = $conn->prepare("UPDATE user_profile SET birthday=?, show_birthday=?, gender=?, show_gender=?, facebook=?, show_facebook=?, show_email=?, show_phone=? WHERE user_id=?");
+        $stmt->execute([$birthday, $show_birthday, $gender, $show_gender, $facebook, $show_facebook, $show_email, $show_phone, $user_id]);
+        $success = "Thông tin cá nhân đã được cập nhật!";
+    }
 }
 
-// Lấy lại dữ liệu user sau cập nhật
-$stmt = $conn->prepare("SELECT * FROM users WHERE user_id=?");
+// Lấy lại dữ liệu user sau cập nhật (với profile mở rộng)
+$stmt = $conn->prepare("SELECT users.*, 
+                user_profile.show_email, user_profile.show_phone, user_profile.show_birthday, 
+                user_profile.show_gender, user_profile.show_facebook, 
+                user_profile.birthday, user_profile.gender, user_profile.facebook
+            FROM users
+            LEFT JOIN user_profile ON users.user_id = user_profile.user_id
+            WHERE users.user_id=?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 ?>
@@ -250,8 +194,7 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
         </p>
         <form method="POST" action="verify.php">
             <input type="hidden" name="method" value="email">
-            <input type="hidden" name="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>">
-            <button type="submit" class="btn btn-primary">Xác thực Email</button>
+            <button type="submit" class="btn btn-primary">Xác thực/Đổi Email</button>
         </form>
     </div>
 
@@ -259,16 +202,13 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
     <div class="card p-3 mb-3">
         <h4>Số điện thoại</h4>
         <p><strong>Số điện thoại:</strong> <?= htmlspecialchars($user['phone'] ?: 'Chưa cập nhật') ?>
-            <?php if (!empty($user['phone']) && empty($user['otp_code'])): ?>
+            <?php if ($user['phone']): ?>
                 <span class="badge bg-success">Đã xác thực</span>
-            <?php elseif (!empty($user['phone'])): ?>
-                <span class="badge bg-warning">Chưa xác thực</span>
             <?php endif; ?>
         </p>
             <form method="POST" action="verify.php">
                 <input type="hidden" name="method" value="phone">
-                <input type="hidden" name="phone" value="<?= htmlspecialchars($user['phone'] ?? '') ?>">
-                <button type="submit" class="btn btn-primary">Xác thực SĐT</button>
+                <button type="submit" class="btn btn-primary">Xác thực/Đổi SĐT</button>
             </form>
     </div>
 

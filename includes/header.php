@@ -189,15 +189,16 @@ if ($BASE_URL === '' || $BASE_URL === '.') {
                         require_once __DIR__ . '/db.php';
                         $notifications_count = 0;
                         $pending_docs = 0;
-                        $pending_reports = 0; //$conn->query("SELECT COUNT(*) FROM reports WHERE status='pending'")->fetchColumn();
-                        $reported_comments = 0; //$conn->query("SELECT COUNT(*) FROM comments WHERE reported=1")->fetchColumn();
+                        $pending_edits = 0;
                         if ($_SESSION['role'] === 'admin') {
                             $pending_docs = $conn->query("SELECT COUNT(*) FROM documents WHERE status_id=1")->fetchColumn();
+                            $pending_edits = $conn->query("SELECT COUNT(*) FROM document_edits WHERE status='pending'")->fetchColumn();
                         }
                         $stmt = $conn->prepare("SELECT COUNT(*) FROM notifications WHERE user_id=? AND is_read=0");
                         $stmt->execute([$_SESSION['user_id']]);
                         $normal_notifications = $stmt->fetchColumn();
-                        $notifications_count = $normal_notifications + $pending_docs + $pending_reports + $reported_comments;
+                        $tailieu_notifications = $pending_docs + $pending_edits;
+                        $notifications_count = $normal_notifications + $tailieu_notifications;
                     ?>
                         <li class="nav-item"><a class="nav-link" href="<?php echo $BASE_URL; ?>/upload.php">📤 Tải tài liệu lên</a></li>
                         <li class="nav-item dropdown position-relative">
@@ -215,10 +216,11 @@ if ($BASE_URL === '' || $BASE_URL === '.') {
                                 <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/profile.php?user=<?= htmlspecialchars($_SESSION['username']) ?>">👤 Trang cá nhân</a></li>
                                 <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/settings_profile.php">⚙️ Cài đặt tài khoản</a></li>
                                 <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/my_documents.php">📄 Quản lý tài liệu</a></li>
-                                <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/notifications.php">🔔 Thông báo (<?= $notifications_count ?>)</a></li>
+                                <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/notifications.php">🔔 Thông báo (<?= $normal_notifications ?>)</a></li>
                                 <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/downloads.php">📥 Lịch sử tải về</a></li>
 
                                 <?php if ($_SESSION['role'] === 'admin'): ?>
+                                    <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/approve.php">📄 Duyệt tài liệu (<?= $tailieu_notifications ?>)</a></li>
                                     <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/user.php">👥 Quản lý tài khoản</a></li>
                                     <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/ai_logs.php">📜 AI Logs</a></li>
                                 <?php endif; ?>

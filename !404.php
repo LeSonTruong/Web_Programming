@@ -1,7 +1,9 @@
 <?php
 http_response_code(404);
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 include 'includes/header.php';
 ?>

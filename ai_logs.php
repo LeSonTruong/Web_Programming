@@ -30,8 +30,7 @@ if (!empty($_GET['doc_id'])) {
 
 // Search in summary or log
 if (!empty($_GET['q'])) {
-    $filters[] = "(ai_queue.summary LIKE ? OR ai_queue.log LIKE ?)";
-    $params[] = "%" . $_GET['q'] . "%";
+    $filters[] = "(ai_queue.log LIKE ?)";
     $params[] = "%" . $_GET['q'] . "%";
 }
 
@@ -51,7 +50,7 @@ $logs = $stmt->fetchAll();
 ?>
 
 <div class="container my-4">
-    <h2 class="mb-4">📜 Nhật ký AI (AI Logs)</h2>
+    <h2 class="mb-4">📜 Nhật ký AI</h2>
 
     <!-- Bộ lọc -->
     <form class="row g-3 mb-4" method="get">
@@ -68,7 +67,7 @@ $logs = $stmt->fetchAll();
             <input type="number" name="doc_id" class="form-control" placeholder="Doc ID" value="<?= htmlspecialchars($_GET['doc_id'] ?? '') ?>">
         </div>
         <div class="col-md-6">
-            <input type="text" name="q" class="form-control" placeholder="Tìm trong summary/log..." value="<?= htmlspecialchars($_GET['q'] ?? '') ?>">
+            <input type="text" name="q" class="form-control" placeholder="Tìm trong log..." value="<?= htmlspecialchars($_GET['q'] ?? '') ?>">
         </div>
         <div class="col-md-2">
             <button class="btn btn-primary w-100" type="submit">🔎 Lọc</button>
@@ -85,9 +84,10 @@ $logs = $stmt->fetchAll();
                         <th>#</th>
                         <th>Tài liệu</th>
                         <th>Trạng thái</th>
-                        <th>Log</th>
+                        <th>KQ lọc</th>
                         <th>Created At</th>
                         <th>Updated At</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -96,7 +96,7 @@ $logs = $stmt->fetchAll();
                             <td><?= $log['id'] ?></td>
                             <td>
                                 <?php if ($log['document_id']): ?>
-                                    <a href="approve.php?doc=<?= $log['document_id'] ?>" target="_blank">
+                                    <a href="document_view.php?id=<?= $log['document_id'] ?>" target="_blank">
                                         <?= htmlspecialchars($log['title'] ?? 'Không rõ') ?>
                                     </a>
                                 <?php else: ?>
@@ -114,9 +114,18 @@ $logs = $stmt->fetchAll();
                                     <span class="badge bg-danger"><?= htmlspecialchars($log['status']) ?></span>
                                 <?php endif; ?>
                             </td>
-                            <td><?= nl2br(htmlspecialchars($log['log'] ?? '')) ?></td>
+                            <?php
+                                if (isset($log['checkstatus']) && $log['checkstatus'] !== null && $log['checkstatus'] !== '') {
+                                    $checkstatus = htmlspecialchars((string)$log['checkstatus']);
+                                } else {
+                                    $checkstatus = '-';
+                                }
+                            ?>
+                            <td><?= $checkstatus ?></td>
                             <td><?= $log['created_at'] ?></td>
                             <td><?= $log['updated_at'] ?? '' ?></td>
+                            <td><button class="btn btn-sm btn-outline-secondary view-log-btn" data-log-id="<?= $log['id'] ?>">Xem log</button></td>
+                            <td style="display:none" id="log-content-<?= $log['id'] ?>"><?= htmlspecialchars($log['log'] ?? '') ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -126,3 +135,32 @@ $logs = $stmt->fetchAll();
 </div>
 
 <?php include 'includes/footer.php'; ?>
+<style>
+/* Simple modal for viewing log content */
+.ai-log-modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); z-index: 1050; }
+.ai-log-modal .ai-log-box { background: #fff; padding: 16px; max-width: 90%; max-height: 80%; overflow:auto; border-radius:6px; box-shadow:0 10px 30px rgba(0,0,0,0.3);} 
+.ai-log-modal pre { white-space: pre-wrap; word-wrap: break-word; font-family: monospace; }
+.ai-log-close { position: absolute; top:12px; right:16px; cursor:pointer; }
+</style>
+
+<div class="ai-log-modal" id="aiLogModal">
+    <div class="ai-log-box">
+        <button class="btn btn-sm btn-danger ai-log-close" id="aiLogClose">Đóng</button>
+        <h5>Nội dung log</h5>
+        <pre id="aiLogContent">(no log)</pre>
+    </div>
+</div>
+
+<script>
+document.addEventListener('click', function(e){
+    if (e.target && e.target.classList && e.target.classList.contains('view-log-btn')){
+        var id = e.target.getAttribute('data-log-id');
+        var hidden = document.getElementById('log-content-' + id);
+        var content = hidden ? hidden.textContent : '(no log)';
+        document.getElementById('aiLogContent').textContent = content;
+        document.getElementById('aiLogModal').style.display = 'flex';
+    }
+});
+document.getElementById('aiLogClose').addEventListener('click', function(){ document.getElementById('aiLogModal').style.display='none'; });
+document.getElementById('aiLogModal').addEventListener('click', function(e){ if (e.target === this) this.style.display='none'; });
+</script>

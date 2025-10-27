@@ -50,5 +50,5 @@ if ($doc_id && in_array($review_type, ['positive', 'negative', 'none'])) {
     }
 }
 
-header("Location: document_detail.php?id=" . $doc_id);
+header("Location: document_view.php?id=" . $doc_id);
 exit;

@@ -1,6 +1,6 @@
--- MySQL dump 10.13  Distrib 8.0.43, for Win64 (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.42, for Win64 (x86_64)
 --
--- Host: 127.0.0.1    Database: web_programming
+-- Host: localhost    Database: web_programming
 -- ------------------------------------------------------
 -- Server version	8.0.43
 
@@ -24,34 +24,22 @@ DROP TABLE IF EXISTS `users`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `users` (
   `user_id` int NOT NULL AUTO_INCREMENT,
-  `fullname` varchar(100) NOT NULL,
   `username` varchar(100) NOT NULL,
   `email` varchar(100) NOT NULL,
   `password` varchar(255) NOT NULL,
   `role` enum('admin','user') DEFAULT 'user',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `display_name` varchar(100) DEFAULT NULL,
-  `last_display_change` datetime DEFAULT NULL,
+  `last_name_change` datetime DEFAULT NULL,
   `avatar` varchar(255) DEFAULT 'default.png',
   `phone` varchar(20) DEFAULT NULL,
-  `birthday` date DEFAULT NULL,
-  `gender` enum('male','female','other') DEFAULT NULL,
-  `facebook` varchar(255) DEFAULT NULL,
-  `show_email` tinyint(1) DEFAULT '1',
-  `show_phone` tinyint(1) DEFAULT '1',
-  `show_birthday` tinyint(1) DEFAULT '1',
-  `show_gender` tinyint(1) DEFAULT '1',
-  `show_facebook` tinyint(1) DEFAULT '1',
-  `otp_code` varchar(6) DEFAULT NULL,
-  `otp_expiry` datetime DEFAULT NULL,
-  `email_verification_code` varchar(6) DEFAULT NULL,
   `email_verified` tinyint(1) DEFAULT '0',
   `banned` tinyint(1) DEFAULT '0',
   `comment_locked` tinyint(1) DEFAULT '0',
   `upload_locked` tinyint(1) DEFAULT '0',
   PRIMARY KEY (`user_id`),
   UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -60,7 +48,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'Lê Sơn Trường','LeSonTruong','LeSonTruong@icloud.com','$2y$12$6/Qod9SGmY03ikJ8B4zuYeANHC0/jSgdQg5jkvDoeHFqPOHCpBkqG','admin','2025-08-21 05:01:26','Lê Sơn Trường','2025-08-21 12:01:59','default.png','0967602973',NULL,NULL,NULL,1,1,1,1,1,NULL,NULL,'650623',0,0,0,0),(2,'Nguyễn Việt Hòa','NguyenVietHoa','nguyenviethoa2903@gmail.com','$2y$12$jp2/3z6kW9mPeQdcZuASy.JmKEAtzJ4W5nGGPxKaXcnPnR5La8Jnu','user','2025-08-21 05:02:33','NHƯ CON CẶC','2025-08-21 19:48:07','default.png',NULL,NULL,NULL,NULL,1,1,1,1,1,NULL,NULL,'944303',0,0,0,0),(3,'Nguyễn Huy Kiên','NguyenHuyKien','nguyenkien7901@gmail.com','$2y$12$x8wQv6C0NnEVBo0fDpuxFeZqZTIZU/14fS35fPgTCtQfjdhujtbZe','user','2025-08-25 05:23:04',NULL,NULL,'default.png',NULL,NULL,NULL,NULL,1,1,1,1,1,NULL,NULL,NULL,0,0,0,0);
+INSERT INTO `users` VALUES (1,'LeSonTruong','LeSonTruong@icloud.com','$2y$12$6/Qod9SGmY03ikJ8B4zuYeANHC0/jSgdQg5jkvDoeHFqPOHCpBkqG','admin','2025-08-21 05:01:26','Lê Sơn Trường','2025-08-21 12:01:59','default.png','0967602973',0,0,0,0),(2,'NguyenVietHoa','nguyenviethoa2903@gmail.com','$2y$12$jp2/3z6kW9mPeQdcZuASy.JmKEAtzJ4W5nGGPxKaXcnPnR5La8Jnu','user','2025-08-21 05:02:33','NHƯ CON CẶC','2025-08-21 19:48:07','default.png',NULL,0,1,0,0),(3,'NguyenHuyKien','nguyenkien7901@gmail.com','$2y$12$x8wQv6C0NnEVBo0fDpuxFeZqZTIZU/14fS35fPgTCtQfjdhujtbZe','user','2025-08-25 05:23:04',NULL,NULL,'default.png',NULL,0,0,1,0),(4,'user','user@gmail.com','$2y$12$i2BZoNKDnKH.YB8b/pEtRurYyLfz2g.FxvkeaWu4ofGDPFWF8lJua','user','2025-09-16 14:56:57',NULL,NULL,'avatar_4.png',NULL,0,0,1,0),(5,'ad','thanhdado480@gmail.com','$2y$12$1aYTXRkLUTQATIa9Djxa6OLWoanix0j2qgG.swqoLvrQ9Zca.m/rC','admin','2025-10-14 16:36:24','Admin','2025-10-26 15:50:02','default.png',NULL,0,0,0,0),(6,'a','a@gmail.com','$2y$12$AQD1Sg9tTporoOomZAeIGOsePU0WFJDv2n4xYr4pfHMAtFsb42.tm','user','2025-10-27 14:21:47','a',NULL,'default.png',NULL,0,0,0,0);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -73,4 +61,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-27 10:38:43
+-- Dump completed on 2025-10-28  2:15:16

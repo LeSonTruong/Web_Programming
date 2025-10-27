@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 header("Location: login.php");
                 exit();
             } else {
-                $error = "Đăng ký thất bại! Vui lòng thử lại.";
+                $error = "Đăng ký thất bại! Vui lòng thử lại sau.";
             }
         }
     }
@@ -64,7 +64,7 @@ include 'includes/header.php';
 
         <form method="post">
             <div class="mb-3">
-                <label for="display_name" class="form-label">Họ và tên</label>
+                <label for="display_name" class="form-label">Tên hiển thị</label>
                 <input type="text" id="display_name" name="display_name" class="form-control" value="<?= htmlspecialchars($display_name ?? '') ?>" required>
             </div>
 

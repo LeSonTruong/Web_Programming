@@ -202,7 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_GET['edit_comment'])) {
         if (form.classList.contains('comment-form')) {
             e.preventDefault();
             const formData = new FormData(form);
-            fetch('add_comment.php', {
+            fetch('action_add_comment.php', {
                     method: 'POST',
                     body: formData
                 })
@@ -353,8 +353,8 @@ if ($search_user) {
 
 $stmt = $conn->prepare("
     SELECT c.*, u.username,
-        (SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = c.comment_id) AS like_count,
-        (SELECT COUNT(*) FROM comment_dislikes cd WHERE cd.comment_id = c.comment_id) AS dislike_count,
+        (SELECT COUNT(*) FROM comment_reacts cr WHERE cr.comment_id = c.comment_id AND cr.react = 1) AS like_count,
+        (SELECT COUNT(*) FROM comment_reacts cr WHERE cr.comment_id = c.comment_id AND cr.react = 0) AS dislike_count,
         GREATEST(
             UNIX_TIMESTAMP(c.created_at),
             IFNULL((SELECT MAX(UNIX_TIMESTAMP(created_at)) FROM comments r WHERE r.parent_comment_id = c.comment_id), 0)
@@ -372,8 +372,8 @@ $comments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // Chỉ lấy reply cho comment gốc
 $replyStmt = $conn->prepare("
     SELECT c.*, u.username,
-        (SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = c.comment_id) AS like_count,
-        (SELECT COUNT(*) FROM comment_dislikes cd WHERE cd.comment_id = c.comment_id) AS dislike_count
+        (SELECT COUNT(*) FROM comment_reacts cr WHERE cr.comment_id = c.comment_id AND cr.react = 1) AS like_count,
+        (SELECT COUNT(*) FROM comment_reacts cr WHERE cr.comment_id = c.comment_id AND cr.react = 0) AS dislike_count
     FROM comments c
     JOIN users u ON c.user_id = u.user_id
     WHERE c.doc_id=? AND c.parent_comment_id IS NOT NULL AND (SELECT parent_comment_id FROM comments WHERE comment_id=c.parent_comment_id) IS NULL
@@ -581,11 +581,12 @@ foreach ($all_replies as $r) {
         </div>
     </div>
     <p><strong>Mô tả:</strong> <?= nl2br(htmlspecialchars($doc['description'] ?? '')) ?></p>
-    <!-- Collapseable summary -->
+    <?php if (isset($doc['summary']) && $doc['summary'] !== null && trim($doc['summary']) !== ''): ?>
     <details style="margin-bottom:10px">
         <summary style="cursor:pointer;font-weight:bold;color:#007bff">Tóm tắt văn bản</summary>
-        <div style="padding:8px 0 0 16px;white-space:pre-line;"><?= nl2br(htmlspecialchars($doc['summary'] ?? 'Chưa có tóm tắt')) ?></div>
+        <div style="padding:8px 0 0 16px;white-space:pre-line;"><?= nl2br(htmlspecialchars($doc['summary'])) ?></div>
     </details>
+    <?php endif; ?>
     <p><strong>Đánh giá:</strong> <span id="review-summary-text"><?= $review_summary ?></span> (👍 <span id="like-count"><?= $doc['positive_count'] ?? 0 ?></span> | 👎 <span id="dislike-count"><?= $doc['negative_count'] ?? 0 ?></span>)</p>
     <p><strong>Lượt xem:</strong> <?= number_format($doc['views'] ?? 0) ?></p>
     <p><strong>Lượt tải:</strong> <?= $total_downloads ?></p>
@@ -625,7 +626,7 @@ foreach ($all_replies as $r) {
             function sendReview(type, undo = false) {
                 let reviewType = type;
                 if (undo) reviewType = 'none';
-                fetch('review.php', {
+                fetch('action_doc_review.php', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',
@@ -810,6 +811,12 @@ foreach ($all_replies as $r) {
                                         <p class="mb-1"><?= nl2br(htmlspecialchars($r['content'])) ?></p>
                                         <button <?= $disabledAttr ?> class="btn btn-sm btn-outline-primary like-comment-btn" data-id="<?= (int)$r['comment_id'] ?>">👍 <span class="like-count"><?= (int)($r['like_count'] ?? 0) ?></span></button>
                                         <button <?= $disabledAttr ?> class="btn btn-sm btn-outline-danger dislike-comment-btn" data-id="<?= (int)$r['comment_id'] ?>">👎 <span class="dislike-count"><?= (int)($r['dislike_count'] ?? 0) ?></span></button>
+                                        <?php if (!$khongtuongtac && $is_owner): ?>
+                                            <a href="?edit_comment=<?= (int)$c['comment_id'] ?>&id=<?= (int)$doc['doc_id'] ?>#comment-<?= (int)$c['comment_id'] ?>" class="btn btn-sm btn-warning">Sửa</a>
+                                        <?php endif; ?>
+                                        <?php if (!$khongtuongtac && ($is_owner || (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'))): ?>
+                                            <a href="?delete_comment=<?= (int)$c['comment_id'] ?>&id=<?= (int)$doc['doc_id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Bạn chắc chắn muốn xóa bình luận này?');">Xóa</a>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -932,7 +939,7 @@ foreach ($all_replies as $r) {
                 replyBox.querySelector('.reply-form').onsubmit = function(e) {
                     e.preventDefault();
                     const formData = new FormData(this);
-                    fetch('reply_comment.php', {
+                    fetch('action_reply_comment.php', {
                             method: 'POST',
                             body: formData
                         })
@@ -973,7 +980,7 @@ foreach ($all_replies as $r) {
                     const commentCard = this.closest('.card');
                     const likeBtn = commentCard ? commentCard.querySelector('.like-comment-btn') : null;
                     const dislikeBtn = commentCard ? commentCard.querySelector('.dislike-comment-btn') : null;
-                    fetch('review_comment.php', {
+                    fetch('action_review_comment.php', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/x-www-form-urlencoded'

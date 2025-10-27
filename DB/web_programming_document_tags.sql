@@ -1,6 +1,6 @@
--- MySQL dump 10.13  Distrib 8.0.43, for Win64 (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.42, for Win64 (x86_64)
 --
--- Host: 127.0.0.1    Database: web_programming
+-- Host: localhost    Database: web_programming
 -- ------------------------------------------------------
 -- Server version	8.0.43
 
@@ -38,7 +38,7 @@ CREATE TABLE `document_tags` (
 
 LOCK TABLES `document_tags` WRITE;
 /*!40000 ALTER TABLE `document_tags` DISABLE KEYS */;
-INSERT INTO `document_tags` VALUES (9,1),(10,1),(10,2),(9,3),(10,10),(9,11),(9,12);
+INSERT INTO `document_tags` VALUES (9,1),(10,1),(9,2),(10,2),(9,3),(10,10),(9,11),(9,12);
 /*!40000 ALTER TABLE `document_tags` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -51,4 +51,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-27 10:38:43
+-- Dump completed on 2025-10-28  2:15:16

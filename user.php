@@ -48,6 +48,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $conn->prepare("UPDATE users SET upload_locked=0 WHERE user_id=? AND role='user'");
                 $stmt->execute([$user_id]);
                 break;
+            case 'edit':
+                // redirect to admin edit page
+                header('Location: admin_edit_user.php?id=' . (int)$user_id);
+                exit();
         }
     }
 }
@@ -78,11 +82,12 @@ $users = $conn->query("SELECT * FROM users ORDER BY created_at DESC")->fetchAll(
                                 <strong>Bình luận:</strong>
                                 <?= ($user['comment_locked'] ?? 0) ? '🔒 Khóa' : '🟢 Mở' ?>
                                 <br>
-                                <strong>Tải tài liệu:</strong>
+                                <strong>Up tài liệu:</strong>
                                 <?= ($user['upload_locked'] ?? 0) ? '🔒 Khóa' : '🟢 Mở' ?>
                             </p>
                         </div>
                         <div class="card-footer d-flex flex-wrap gap-2">
+                            <a href="admin_edit_user.php?id=<?= (int)$user['user_id'] ?>" class="btn btn-sm btn-primary">Sửa</a>
                             <?php if ($user['role'] !== 'admin'): ?>
                                 <form method="post" style="display:inline;">
                                     <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>">
@@ -112,7 +117,7 @@ $users = $conn->query("SELECT * FROM users ORDER BY created_at DESC")->fetchAll(
                                     </button>
                                 </form>
                             <?php else: ?>
-                                <span class="text-muted">Admin</span>
+                                <span class="text-muted ms-auto">Admin</span>
                             <?php endif; ?>
                         </div>
                     </div>
