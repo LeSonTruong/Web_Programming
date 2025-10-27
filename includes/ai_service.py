@@ -51,7 +51,8 @@ try:
 except Exception:
     pass
 
-AI_URL = "http://127.0.0.1:8000/process_pdf"  # local 
+AI_URL = "https://banhgao-alongai.hf.space/process_pdf"
+# AI_URL = "http://127.0.0.1:8000/process_pdf"  # local 
 
 
 def summarize_pdf(input: Union[os.PathLike, IO[bytes]], timeout: Optional[float] = None, session: Optional[requests.Session] = None) -> dict:
