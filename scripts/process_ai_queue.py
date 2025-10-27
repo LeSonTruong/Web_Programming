@@ -49,7 +49,7 @@ except Exception:
 
 from includes.ai_service import summarize_document_by_id
 
-SLEEP_SECONDS = 3
+SLEEP_SECONDS = 30
 
 def get_db_config():
     """Get database configuration from environment variables"""
