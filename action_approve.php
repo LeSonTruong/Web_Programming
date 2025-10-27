@@ -30,82 +30,41 @@ if (isset($_POST['delete'])) {
         } elseif (! $is_admin && $doc['user_id'] != $current_user) {
             set_flash('<div class="alert alert-danger">⚠️ Bạn không có quyền xóa tài liệu này.</div>');
         } else {
-            if (!empty($doc['file_path']) && file_exists($doc['file_path'])) {
-                @unlink($doc['file_path']);
+            // Try simple local removal: files are stored locally in project (no URL handling)
+            if (!empty($doc['file_path'])) {
+                $fp = $doc['file_path'];
+                // Candidate local locations (in order): stored value, relative to script, project root
+                $candidates = [
+                    $fp,
+                    __DIR__ . '/' . ltrim($fp, '/\\'),
+                    '/var/www/studyshare/' . ltrim($fp, '/\\'),
+                ];
+
+                $deleted = false;
+                foreach ($candidates as $cand) {
+                    if (!$cand) continue;
+                    if (file_exists($cand) && is_file($cand)) {
+                        if (@unlink($cand)) {
+                            $deleted = true;
+                            break;
+                        }
+                    }
+                }
+
+                if ($deleted) {
+                    set_flash('<div class="alert alert-secondary">ℹ️ Xóa thành công.</div>');
+                } else {
+                    // log for investigation; not fatal
+                    error_log('action_approve: failed to remove local file for doc_id ' . $doc_id . ' path: ' . $fp);
+                }
             }
+
             $stmt = $conn->prepare("DELETE FROM documents WHERE doc_id=?");
             $stmt->execute([$doc_id]);
             set_flash('<div class="alert alert-success">✅ Tài liệu đã được xóa.</div>');
         }
     } catch (Exception $e) {
         set_flash('<div class="alert alert-danger">❌ Lỗi khi xóa tài liệu: ' . htmlspecialchars($e->getMessage()) . '</div>');
-    }
-    header('Location: ' . $redirect);
-    exit();
-}
-
-// Enqueue AI (owner or admin) - replicates logic from my_documents.php but via flash + redirect
-if (isset($_POST['enqueue_ai'])) {
-    // Only admins may enqueue AI jobs. Owners no longer allowed to enqueue directly.
-    if (! $is_admin) {
-        set_flash('<div class="alert alert-danger">⚠️ Bạn không có quyền thực hiện hành động này.</div>');
-        header('Location: ' . $redirect);
-        exit();
-    }
-    $doc_id = (int)$_POST['enqueue_ai'];
-    try {
-        $stmt = $conn->prepare("SELECT * FROM documents WHERE doc_id=?");
-        $stmt->execute([$doc_id]);
-        $doc = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$doc || (! $is_admin && $doc['user_id'] != $current_user)) {
-            set_flash('<div class="alert alert-danger">⚠️ Không tìm thấy tài liệu hoặc bạn không có quyền thực hiện.</div>');
-            header('Location: ' . $redirect);
-            exit();
-        }
-
-        // 1) Check for existing pending or processing jobs
-        $stmt = $conn->prepare("SELECT COUNT(*) FROM ai_queue WHERE document_id = ? AND status IN ('pending','processing')");
-        $stmt->execute([$doc_id]);
-        $count = (int)$stmt->fetchColumn();
-
-        if ($count > 0) {
-            set_flash('<div class="alert alert-warning">⚠️ Tài liệu này đã có tiến trình đang chạy (pending/processing). Không thể thêm vào hàng đợi.</div>');
-            header('Location: ' . $redirect);
-            exit();
-        }
-
-        // 2) Get the most recent ai_queue row for this document (if any)
-        $stmt = $conn->prepare("SELECT * FROM ai_queue WHERE document_id = ? ORDER BY COALESCE(updated_at, created_at) DESC LIMIT 1");
-        $stmt->execute([$doc_id]);
-        $last = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        $need_confirm = false;
-        if ($last) {
-            $last_status = $last['status'];
-            if ($last_status === 'done') {
-                $last_time = $last['updated_at'] ?? $last['created_at'];
-                $last_ts = $last_time ? strtotime($last_time) : 0;
-                if ($last_ts >= time() - 30 * 60) {
-                    $need_confirm = true;
-                }
-            }
-        }
-
-        // If confirmation is required, caller should repost with a confirm=1 field. We'll show a flash message indicating that.
-        if ($need_confirm && empty($_POST['confirm'])) {
-            // store a message that the UI should show a confirm button; but since we cannot render interactive form here,
-            // instruct the user to re-submit (UI should have done this). We'll show a warning and not enqueue.
-            set_flash('<div class="alert alert-warning">⚠️ Tài liệu này đã được xử lý gần đây (trong vòng 30 phút). Nếu bạn chắc chắn muốn gửi lại, hãy nhấn lại nút AI để xác nhận.</div>');
-            header('Location: ' . $redirect);
-            exit();
-        }
-
-        // Insert queue row
-        $stmt = $conn->prepare("INSERT INTO ai_queue (document_id, status, created_at) VALUES (?, 'pending', NOW())");
-        $stmt->execute([$doc_id]);
-        set_flash('<div class="alert alert-success">✅ Đã thêm tài liệu vào hàng đợi AI (pending).</div>');
-    } catch (Exception $e) {
-        set_flash('<div class="alert alert-danger">❌ Lỗi khi thêm vào ai_queue: ' . htmlspecialchars($e->getMessage()) . '</div>');
     }
     header('Location: ' . $redirect);
     exit();
