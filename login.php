@@ -70,6 +70,9 @@ include 'includes/header.php';
         <p class="mt-3 text-center">
             Chưa có tài khoản? <a href="register.php">Đăng ký ngay</a>
         </p>
+        <p class="text-center">
+            <a href="reset_password.php">Quên mật khẩu?</a>
+        </p>
     </div>
 </div>
 
