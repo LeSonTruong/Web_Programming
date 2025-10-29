@@ -221,6 +221,7 @@ if ($BASE_URL === '' || $BASE_URL === '.') {
 
                                 <?php if ($_SESSION['role'] === 'admin'): ?>
                                     <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/approve.php">📄 Duyệt tài liệu (<?= $tailieu_notifications ?>)</a></li>
+                                    <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/manage_subjects.php">🏷️ Quản lý môn học</a></li>
                                     <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/user.php">👥 Quản lý tài khoản</a></li>
                                     <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/ai_logs.php">📜 AI Logs</a></li>
                                 <?php endif; ?>
