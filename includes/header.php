@@ -21,7 +21,7 @@ if ($BASE_URL === '' || $BASE_URL === '.') {
     <title>StudyShare</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Dùng base URL động để hỗ trợ deploy trong subfolder hoặc root -->
-    <link rel="stylesheet" href="<?php echo $BASE_URL; ?>/style.css">
+    <link rel="stylesheet" href="<?php echo $BASE_URL; ?>/css/style.css">
     <style>
         /* Chừa khoảng cho navbar fixed-top */
         body {
