@@ -1,17 +1,17 @@
 <?php
-include 'includes/header.php';
 include 'includes/db.php';
 
-// ====== KIỂM TRA QUYỀN ADMIN ======
+session_start();
+
+// ====== KIỂM TRA QUYỀN ======
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    echo '<div class="container my-5">
-            <div class="alert alert-danger text-center">
-                ⚠️ Bạn không có quyền truy cập trang này!
-            </div>
-          </div>';
-    include 'includes/footer.php';
+    http_response_code(403);
+    $reason = '';
+    include __DIR__ . '/!403.php';
     exit();
 }
+
+include 'includes/header.php';
 
 // ====== XỬ LÝ HÀNH ĐỘNG ADMIN ======
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -32,7 +32,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $conn->prepare("UPDATE users SET banned=0 WHERE user_id=? AND role='user'");
                 $stmt->execute([$user_id]);
                 break;
-                // Đã loại bỏ các chức năng khóa bình luận và tài liệu do không có trường trong CSDL
+            case 'lock_comments':
+                $stmt = $conn->prepare("UPDATE users SET comment_locked=1 WHERE user_id=? AND role='user'");
+                $stmt->execute([$user_id]);
+                break;
+            case 'unlock_comments':
+                $stmt = $conn->prepare("UPDATE users SET comment_locked=0 WHERE user_id=? AND role='user'");
+                $stmt->execute([$user_id]);
+                break;
+            case 'lock_uploads':
+                $stmt = $conn->prepare("UPDATE users SET upload_locked=1 WHERE user_id=? AND role='user'");
+                $stmt->execute([$user_id]);
+                break;
+            case 'unlock_uploads':
+                $stmt = $conn->prepare("UPDATE users SET upload_locked=0 WHERE user_id=? AND role='user'");
+                $stmt->execute([$user_id]);
+                break;
+            case 'edit':
+                // redirect to admin edit page
+                header('Location: admin_edit_user.php?id=' . (int)$user_id);
+                exit();
         }
     }
 }
@@ -61,43 +80,44 @@ $users = $conn->query("SELECT * FROM users ORDER BY created_at DESC")->fetchAll(
                             </p>
                             <p class="card-text">
                                 <strong>Bình luận:</strong>
-                                <?= ($user['comments_locked'] ?? 0) ? '🔒 Khóa' : '🟢 Mở' ?>
+                                <?= ($user['comment_locked'] ?? 0) ? '🔒 Khóa' : '🟢 Mở' ?>
                                 <br>
-                                <strong>Tải tài liệu:</strong>
-                                <?= ($user['uploads_locked'] ?? 0) ? '🔒 Khóa' : '🟢 Mở' ?>
+                                <strong>Up tài liệu:</strong>
+                                <?= ($user['upload_locked'] ?? 0) ? '🔒 Khóa' : '🟢 Mở' ?>
                             </p>
                         </div>
                         <div class="card-footer d-flex flex-wrap gap-2">
+                            <a href="admin_edit_user.php?id=<?= (int)$user['user_id'] ?>" class="btn btn-sm btn-primary">Sửa</a>
                             <?php if ($user['role'] !== 'admin'): ?>
                                 <form method="post" style="display:inline;">
-                                    <input type="hidden" name="user_id" value="<?= $user['user_id'] ?>">
+                                    <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>">
                                     <button type="submit" name="action" value="<?= ($user['banned'] ?? 0) ? 'unban' : 'ban' ?>" class="btn btn-sm <?= ($user['banned'] ?? 0) ? 'btn-success' : 'btn-warning' ?>">
                                         <?= ($user['banned'] ?? 0) ? 'Mở khóa' : 'Khóa tài khoản' ?>
                                     </button>
                                 </form>
 
                                 <form method="post" style="display:inline;">
-                                    <input type="hidden" name="user_id" value="<?= $user['user_id'] ?>">
-                                    <button type="submit" name="action" value="<?= ($user['comments_locked'] ?? 0) ? 'unlock_comments' : 'lock_comments' ?>" class="btn btn-sm btn-secondary">
-                                        <?= ($user['comments_locked'] ?? 0) ? 'Mở bình luận' : 'Khóa bình luận' ?>
+                                    <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>">
+                                    <button type="submit" name="action" value="<?= ($user['comment_locked'] ?? 0) ? 'unlock_comments' : 'lock_comments' ?>" class="btn btn-sm btn-secondary">
+                                        <?= ($user['comment_locked'] ?? 0) ? 'Mở bình luận' : 'Khóa bình luận' ?>
                                     </button>
                                 </form>
 
                                 <form method="post" style="display:inline;">
-                                    <input type="hidden" name="user_id" value="<?= $user['user_id'] ?>">
-                                    <button type="submit" name="action" value="<?= ($user['uploads_locked'] ?? 0) ? 'unlock_uploads' : 'lock_uploads' ?>" class="btn btn-sm btn-info">
-                                        <?= ($user['uploads_locked'] ?? 0) ? 'Mở tải lên' : 'Khóa tải lên' ?>
+                                    <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>">
+                                    <button type="submit" name="action" value="<?= ($user['upload_locked'] ?? 0) ? 'unlock_uploads' : 'lock_uploads' ?>" class="btn btn-sm btn-info">
+                                        <?= ($user['upload_locked'] ?? 0) ? 'Mở tải lên' : 'Khóa tải lên' ?>
                                     </button>
                                 </form>
 
                                 <form method="post" style="display:inline;">
-                                    <input type="hidden" name="user_id" value="<?= $user['user_id'] ?>">
+                                    <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>">
                                     <button type="submit" name="action" value="delete" class="btn btn-sm btn-danger" onclick="return confirm('Bạn có chắc muốn xóa người dùng này?')">
                                         Xóa
                                     </button>
                                 </form>
                             <?php else: ?>
-                                <span class="text-muted">Admin</span>
+                                <span class="text-muted ms-auto">Admin</span>
                             <?php endif; ?>
                         </div>
                     </div>

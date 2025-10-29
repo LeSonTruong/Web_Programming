@@ -4,11 +4,9 @@ include 'includes/db.php';
 
 // ====== KIỂM TRA ĐĂNG NHẬP ======
 if (!isset($_SESSION['user_id'])) {
-    echo '<div class="container my-5">
-            <div class="alert alert-warning text-center">
-                ⚠️ Bạn cần <a href="login.php">đăng nhập</a> để tải tài liệu!
-            </div>
-          </div>';
+    http_response_code(403);
+    $reason = 'chuadangnhap';
+    include __DIR__ . '/!403.php';
     exit();
 }
 

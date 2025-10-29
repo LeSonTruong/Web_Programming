@@ -1,6 +1,6 @@
--- MySQL dump 10.13  Distrib 8.0.43, for Win64 (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.42, for Win64 (x86_64)
 --
--- Host: 127.0.0.1    Database: web_programming
+-- Host: localhost    Database: web_programming
 -- ------------------------------------------------------
 -- Server version	8.0.43
 
@@ -16,30 +16,34 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `document_embeddings`
+-- Table structure for table `reviews`
 --
 
-DROP TABLE IF EXISTS `document_embeddings`;
+DROP TABLE IF EXISTS `reviews`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `document_embeddings` (
-  `id` int NOT NULL AUTO_INCREMENT,
+CREATE TABLE `reviews` (
+  `review_id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
   `doc_id` int NOT NULL,
-  `vector` json NOT NULL,
+  `review_type` enum('positive','negative') NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
+  PRIMARY KEY (`review_id`),
+  UNIQUE KEY `user_id` (`user_id`,`doc_id`),
   KEY `doc_id` (`doc_id`),
-  CONSTRAINT `document_embeddings_ibfk_1` FOREIGN KEY (`doc_id`) REFERENCES `documents` (`doc_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  CONSTRAINT `reviews_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
+  CONSTRAINT `reviews_ibfk_2` FOREIGN KEY (`doc_id`) REFERENCES `documents` (`doc_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=34 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `document_embeddings`
+-- Dumping data for table `reviews`
 --
 
-LOCK TABLES `document_embeddings` WRITE;
-/*!40000 ALTER TABLE `document_embeddings` DISABLE KEYS */;
-/*!40000 ALTER TABLE `document_embeddings` ENABLE KEYS */;
+LOCK TABLES `reviews` WRITE;
+/*!40000 ALTER TABLE `reviews` DISABLE KEYS */;
+INSERT INTO `reviews` VALUES (1,1,9,'positive','2025-08-27 03:29:30'),(2,1,10,'positive','2025-08-23 15:12:10'),(3,3,9,'positive','2025-08-25 06:11:29'),(33,5,13,'positive','2025-10-26 15:18:56');
+/*!40000 ALTER TABLE `reviews` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -51,4 +55,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-27 10:38:43
+-- Dump completed on 2025-10-28  2:15:16

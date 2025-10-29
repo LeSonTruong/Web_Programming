@@ -4,6 +4,13 @@ ob_start();
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+// Xác định base URL của ứng dụng (ví dụ: '' nếu chạy ở domain root, hoặc '/aaa' nếu chạy ở subfolder)
+// Dùng dirname($_SERVER['SCRIPT_NAME']) để lấy thư mục chứa script hiện tại
+$BASE_URL = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
+if ($BASE_URL === '' || $BASE_URL === '.') {
+    $BASE_URL = '';
+}
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -13,7 +20,8 @@ if (session_status() === PHP_SESSION_NONE) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudyShare</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <!-- Dùng base URL động để hỗ trợ deploy trong subfolder hoặc root -->
+    <link rel="stylesheet" href="<?php echo $BASE_URL; ?>/css/style.css">
     <style>
         /* Chừa khoảng cho navbar fixed-top */
         body {
@@ -122,6 +130,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
         .dropdown-menu a:hover {
             background-color: #444444;
+            color: #ffffff;
         }
 
         /* ==== Ô tìm kiếm ==== */
@@ -150,10 +159,11 @@ if (session_status() === PHP_SESSION_NONE) {
     <nav class="navbar navbar-expand-lg navbar-dark shadow-sm fixed-top">
         <div class="container d-flex align-items-center justify-content-between">
             <!-- Logo -->
-            <a class="navbar-brand fw-bold me-3" href="index.php">StudyShare</a>
+            <a class="navbar-brand fw-bold me-3" href="/">StudyShare</a>
 
             <!-- Ô tìm kiếm lớn -->
-            <form class="d-flex search-box flex-grow-1 mx-3 d-none d-lg-flex" role="search" action="search_advanced.php" method="get">
+            <!-- Dùng action với $BASE_URL để form hoạt động đúng khi app chạy trong subfolder -->
+            <form class="d-flex search-box flex-grow-1 mx-3 d-none d-lg-flex" role="search" action="<?php echo $BASE_URL; ?>/search_advanced.php" method="get">
                 <input class="form-control form-control-sm me-2" type="search" name="q" placeholder="Tìm tài liệu..." aria-label="Search">
                 <button class="btn btn-sm btn-outline-light" type="submit">🔍</button>
             </form>
@@ -167,32 +177,35 @@ if (session_status() === PHP_SESSION_NONE) {
             <!-- Menu chính -->
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-lg-center">
-                    <li class="nav-item"><a class="nav-link" href="index.php">🏠 Trang chủ</a></li>
-                    <li class="nav-item"><a class="nav-link" href="documents.php">📄 Tài liệu</a></li>
-                    <li class="nav-item"><a class="nav-link" href="search_advanced.php">🔎 Tìm kiếm nâng cao</a></li>
+                    <li class="nav-item"><a class="nav-link" href="<?php echo $BASE_URL; ?>/">🏠 Trang chủ</a></li>
+                    <li class="nav-item"><a class="nav-link" href="<?php echo $BASE_URL; ?>/documents.php">📄 Tài liệu</a></li>
+                    <li class="nav-item"><a class="nav-link" href="<?php echo $BASE_URL; ?>/search_advanced.php">🔎 Tìm kiếm nâng cao</a></li>
 
                     <?php if (isset($_SESSION['user_id'])):
                         $display_name = $_SESSION['display_name'] ?? $_SESSION['username'];
                         $avatar = $_SESSION['avatar'] ?? 'default.png';
 
-                        require_once 'includes/db.php';
+                        // Dùng __DIR__ để require DB ngay cả khi header được include từ subfolder
+                        require_once __DIR__ . '/db.php';
                         $notifications_count = 0;
+                        $pending_docs = 0;
+                        $pending_edits = 0;
                         if ($_SESSION['role'] === 'admin') {
                             $pending_docs = $conn->query("SELECT COUNT(*) FROM documents WHERE status_id=1")->fetchColumn();
-                            $pending_reports = $conn->query("SELECT COUNT(*) FROM reports WHERE status='pending'")->fetchColumn();
-                            $reported_comments = $conn->query("SELECT COUNT(*) FROM comments WHERE reported=1")->fetchColumn();
-                            $notifications_count = $pending_docs + $pending_reports + $reported_comments;
-                        } else {
-                            $stmt = $conn->prepare("SELECT COUNT(*) FROM notifications WHERE user_id=? AND is_read=0");
-                            $stmt->execute([$_SESSION['user_id']]);
-                            $notifications_count = $stmt->fetchColumn();
+                            $pending_edits = $conn->query("SELECT COUNT(*) FROM document_edits WHERE status='pending'")->fetchColumn();
                         }
+                        $stmt = $conn->prepare("SELECT COUNT(*) FROM notifications WHERE user_id=? AND is_read=0");
+                        $stmt->execute([$_SESSION['user_id']]);
+                        $normal_notifications = $stmt->fetchColumn();
+                        $tailieu_notifications = $pending_docs + $pending_edits;
+                        $notifications_count = $normal_notifications + $tailieu_notifications;
                     ?>
-                        <li class="nav-item"><a class="nav-link" href="upload.php">📤 Tải tài liệu lên</a></li>
+                        <li class="nav-item"><a class="nav-link" href="<?php echo $BASE_URL; ?>/upload.php">📤 Tải tài liệu lên</a></li>
                         <li class="nav-item dropdown position-relative">
                             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button"
                                 data-bs-toggle="dropdown" aria-expanded="false">
-                                <img src="uploads/avatars/<?= htmlspecialchars($avatar) ?>" alt="Avatar" width="30" height="30" class="rounded-circle me-2">
+                                <!-- Avatar dùng base URL để hiển thị đúng khi chạy trong subfolder -->
+                                <img src="<?php echo $BASE_URL; ?>/uploads/avatars/<?= htmlspecialchars($avatar) ?>" alt="Avatar" width="30" height="30" class="rounded-circle me-2">
                                 <?= htmlspecialchars($display_name) ?>
                                 <span class="ms-2 bell-icon<?= ($notifications_count > 0 ? ' bell-animate' : '') ?>" id="dropdown-bell">🔔</span>
                                 <?php if ($notifications_count > 0): ?>
@@ -200,23 +213,24 @@ if (session_status() === PHP_SESSION_NONE) {
                                 <?php endif; ?>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" style="min-width:260px;">
-                                <li><a class="dropdown-item" href="profile.php?user=<?= htmlspecialchars($_SESSION['username']) ?>">👤 Trang cá nhân</a></li>
-                                <li><a class="dropdown-item" href="settings_profile.php">⚙️ Cài đặt tài khoản</a></li>
-                                <li><a class="dropdown-item" href="my_documents.php">📄 Quản lý tài liệu</a></li>
+                                <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/profile.php?user=<?= htmlspecialchars($_SESSION['username']) ?>">👤 Trang cá nhân</a></li>
+                                <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/settings_profile.php">⚙️ Cài đặt tài khoản</a></li>
+                                <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/my_documents.php">📄 Quản lý tài liệu</a></li>
+                                <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/notifications.php">🔔 Thông báo (<?= $normal_notifications ?>)</a></li>
+                                <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/downloads.php">📥 Lịch sử tải về</a></li>
 
                                 <?php if ($_SESSION['role'] === 'admin'): ?>
-                                    <li><a class="dropdown-item" href="notifications.php">🔔 Thông báo (<?= $notifications_count ?>)</a></li>
-                                    <li><a class="dropdown-item" href="user.php">👥 Quản lý tài khoản</a></li>
-                                    <li><a class="dropdown-item text-warning" href="ai_logs.php">📜 AI Logs</a></li>
-                                    <li><a class="dropdown-item" href="downloads.php">📥 Lịch sử tải về</a></li>
+                                    <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/approve.php">📄 Duyệt tài liệu (<?= $tailieu_notifications ?>)</a></li>
+                                    <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/user.php">👥 Quản lý tài khoản</a></li>
+                                    <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/ai_logs.php">📜 AI Logs</a></li>
                                 <?php endif; ?>
 
-                                <li><a class="dropdown-item" href="logout.php">🚪 Đăng xuất</a></li>
+                                <li><a class="dropdown-item" href="<?php echo $BASE_URL; ?>/logout.php">🚪 Đăng xuất</a></li>
                             </ul>
                         </li>
                     <?php else: ?>
-                        <li class="nav-item"><a class="nav-link" href="login.php">🔑 Đăng nhập</a></li>
-                        <li class="nav-item"><a class="nav-link" href="register.php">📝 Đăng ký</a></li>
+                        <li class="nav-item"><a class="nav-link" href="<?php echo $BASE_URL; ?>/login.php">🔑 Đăng nhập</a></li>
+                        <li class="nav-item"><a class="nav-link" href="<?php echo $BASE_URL; ?>/register.php">📝 Đăng ký</a></li>
                     <?php endif; ?>
 
                     <!-- Ô tìm kiếm cho mobile -->

@@ -1,16 +1,82 @@
 <?php
 include 'includes/db.php';
-include 'includes/header.php';
 date_default_timezone_set('Asia/Ho_Chi_Minh');
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+$khoabinhluan = false;
+if (isset($_SESSION['user_id'])) {
+    $stmt = $conn->prepare("SELECT comment_locked FROM users WHERE user_id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $khoabinhluan = $stmt->fetchColumn() == 1;
+}
+
+$khongtuongtac = $khoabinhluan || !isset($_SESSION['user_id']) || empty($_SESSION['user_id']);
+
 $doc_id = (int)($_POST['doc_id'] ?? $_GET['id'] ?? 0);
+
+// ===== LẤY THÔNG TIN TÀI LIỆU =====
+$tagsStmt = $conn->prepare("SELECT t.tag_name FROM document_tags dt JOIN tags t ON dt.tag_id = t.tag_id WHERE dt.doc_id = ?");
+$tagsStmt->execute([$doc_id]);
+$doc_tags = $tagsStmt->fetchAll(PDO::FETCH_COLUMN);
+$stmt = $conn->prepare("
+    SELECT d.*, u.username, s.subject_name,
+        SUM(CASE WHEN r.review_type = 'positive' THEN 1 ELSE 0 END) AS positive_count,
+        SUM(CASE WHEN r.review_type = 'negative' THEN 1 ELSE 0 END) AS negative_count
+    FROM documents d
+    JOIN users u ON d.user_id = u.user_id
+    LEFT JOIN subjects s ON d.subject_id = s.subject_id
+    LEFT JOIN reviews r ON d.doc_id = r.doc_id
+    WHERE d.doc_id = ?
+    GROUP BY d.doc_id
+");
+$stmt->execute([$doc_id]);
+$doc = $stmt->fetch();
+
+$has_access = (
+    (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') ||
+    (isset($_SESSION['user_id']) && isset($doc['user_id']) && (int)$doc['user_id'] === (int)$_SESSION['user_id'])
+);
+
+if (!$doc || ($doc['status_id'] != 2 && !$has_access)) {
+     http_response_code(404);
+    include __DIR__ . '/!404.php';
+    exit();
+}
+
+include 'includes/header.php';
 
 // Tăng lượt xem mỗi lần truy cập
 if ($doc_id) {
     $conn->prepare("UPDATE documents SET views = views + 1 WHERE doc_id = ?")->execute([$doc_id]);
+}
+
+// ===== TÍNH TỔNG ĐÁNH GIÁ =====
+$total_reviews = ($doc['positive_count'] ?? 0) + ($doc['negative_count'] ?? 0);
+$review_summary = "Chưa có đánh giá";
+if ($total_reviews > 0) {
+    $ratio = ($doc['positive_count'] ?? 0) / $total_reviews;
+    $review_summary = $ratio >= 0.7 ? "Đánh giá tích cực" : ($ratio >= 0.4 ? "Đánh giá trung bình" : "Đánh giá tiêu cực");
+}
+
+// ===== ĐẾM LƯỢT TẢI =====
+$countStmt = $conn->prepare("SELECT COUNT(*) AS total_downloads FROM downloads WHERE doc_id=?");
+$countStmt->execute([$doc_id]);
+$downloadData = $countStmt->fetch();
+$total_downloads = $downloadData['total_downloads'] ?? 0;
+
+// ===== XÁC ĐỊNH LOẠI FILE =====
+$file = $doc['file_path'] ?? '';
+$ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+$file_url = 'https://studyshare.banhgao.net/' . $file;
+
+// ===== LẤY TRẠNG THÁI REVIEW CỦA NGƯỜI DÙNG HIỆN TẠI =====
+$user_review_type = '';
+if (isset($_SESSION['user_id'])) {
+    $reviewStmt = $conn->prepare("SELECT review_type FROM reviews WHERE user_id = ? AND doc_id = ? LIMIT 1");
+    $reviewStmt->execute([$_SESSION['user_id'], $doc_id]);
+    $user_review_type = $reviewStmt->fetchColumn() ?: '';
 }
 
 // ===== XỬ LÝ XÓA/SỬA BÌNH LUẬN =====
@@ -136,7 +202,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_GET['edit_comment'])) {
         if (form.classList.contains('comment-form')) {
             e.preventDefault();
             const formData = new FormData(form);
-            fetch('add_comment.php', {
+            fetch('action_add_comment.php', {
                     method: 'POST',
                     body: formData
                 })
@@ -175,9 +241,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_GET['edit_comment'])) {
 </script>
 <?php
 date_default_timezone_set('Asia/Ho_Chi_Minh');
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
 include 'includes/db.php';
 
 
@@ -254,59 +317,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_GET['edit_comment'])) {
     exit();
 }
 
-
-
-// ===== LẤY TAGS CỦA TÀI LIỆU =====
-$tagsStmt = $conn->prepare("SELECT t.tag_name FROM document_tags dt JOIN tags t ON dt.tag_id = t.tag_id WHERE dt.doc_id = ?");
-$tagsStmt->execute([$doc_id]);
-$doc_tags = $tagsStmt->fetchAll(PDO::FETCH_COLUMN);
-$stmt = $conn->prepare("
-    SELECT d.*, u.username, s.subject_name,
-        SUM(CASE WHEN r.review_type = 'positive' THEN 1 ELSE 0 END) AS positive_count,
-        SUM(CASE WHEN r.review_type = 'negative' THEN 1 ELSE 0 END) AS negative_count
-    FROM documents d
-    JOIN users u ON d.user_id = u.user_id
-    LEFT JOIN subjects s ON d.subject_id = s.subject_id
-    LEFT JOIN reviews r ON d.doc_id = r.doc_id
-    WHERE d.doc_id = ?
-    GROUP BY d.doc_id
-");
-$stmt->execute([$doc_id]);
-$doc = $stmt->fetch();
-
-if (!$doc) {
-    echo "<div class='container my-5 alert alert-danger'>❌ Không tìm thấy tài liệu!</div>";
-    include 'includes/footer.php';
-    exit;
-}
-
-// ===== TÍNH TỔNG ĐÁNH GIÁ =====
-$total_reviews = ($doc['positive_count'] ?? 0) + ($doc['negative_count'] ?? 0);
-$review_summary = "Chưa có đánh giá";
-if ($total_reviews > 0) {
-    $ratio = ($doc['positive_count'] ?? 0) / $total_reviews;
-    $review_summary = $ratio >= 0.7 ? "Đánh giá tích cực" : ($ratio >= 0.4 ? "Đánh giá trung bình" : "Đánh giá tiêu cực");
-}
-
-// ===== ĐẾM LƯỢT TẢI =====
-$countStmt = $conn->prepare("SELECT COUNT(*) AS total_downloads FROM downloads WHERE doc_id=?");
-$countStmt->execute([$doc_id]);
-$downloadData = $countStmt->fetch();
-$total_downloads = $downloadData['total_downloads'] ?? 0;
-
-// ===== XÁC ĐỊNH LOẠI FILE =====
-$file = $doc['file_path'] ?? '';
-$ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-$file_url = 'https://yourdomain.com/' . $file; // đổi sang URL thực tế
-
-// ===== LẤY TRẠNG THÁI REVIEW CỦA NGƯỜI DÙNG HIỆN TẠI =====
-$user_review_type = '';
-if (isset($_SESSION['user_id'])) {
-    $reviewStmt = $conn->prepare("SELECT review_type FROM reviews WHERE user_id = ? AND doc_id = ? LIMIT 1");
-    $reviewStmt->execute([$_SESSION['user_id'], $doc_id]);
-    $user_review_type = $reviewStmt->fetchColumn() ?: '';
-}
-
 // ===== LẤY DANH SÁCH BÌNH LUẬN =====
 
 // Phân trang bình luận
@@ -321,15 +331,13 @@ $dislike_sort = ($_GET['dislike_sort'] ?? '') === 'desc' ? 'DESC' : (($_GET['dis
 $search_user = trim($_GET['search_user'] ?? '');
 
 // Lấy tổng số bình luận
-$countStmt = $conn->prepare("SELECT COUNT(*) FROM comments WHERE doc_id=?");
+$countStmt = $conn->prepare("SELECT COUNT(*) FROM comments WHERE doc_id=? AND parent_comment_id IS NULL");
 $countStmt->execute([$doc_id]);
-$total_comments = (int)$countStmt->fetchColumn();
-$total_comment_pages = max(1, ceil($total_comments / $comments_per_page));
+$total_parent_comments = (int)$countStmt->fetchColumn();
+$total_comment_pages = max(1, ceil($total_parent_comments / $comments_per_page));
 
 
 // Lấy bình luận + số lượt like, reply dạng cây
-
-
 $order_by = [];
 if ($like_sort) $order_by[] = "like_count $like_sort";
 if ($dislike_sort) $order_by[] = "dislike_count $dislike_sort";
@@ -345,8 +353,8 @@ if ($search_user) {
 
 $stmt = $conn->prepare("
     SELECT c.*, u.username,
-        (SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = c.comment_id) AS like_count,
-        (SELECT COUNT(*) FROM comment_dislikes cd WHERE cd.comment_id = c.comment_id) AS dislike_count,
+        (SELECT COUNT(*) FROM comment_reacts cr WHERE cr.comment_id = c.comment_id AND cr.react = 1) AS like_count,
+        (SELECT COUNT(*) FROM comment_reacts cr WHERE cr.comment_id = c.comment_id AND cr.react = 0) AS dislike_count,
         GREATEST(
             UNIX_TIMESTAMP(c.created_at),
             IFNULL((SELECT MAX(UNIX_TIMESTAMP(created_at)) FROM comments r WHERE r.parent_comment_id = c.comment_id), 0)
@@ -364,8 +372,8 @@ $comments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // Chỉ lấy reply cho comment gốc
 $replyStmt = $conn->prepare("
     SELECT c.*, u.username,
-        (SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = c.comment_id) AS like_count,
-        (SELECT COUNT(*) FROM comment_dislikes cd WHERE cd.comment_id = c.comment_id) AS dislike_count
+        (SELECT COUNT(*) FROM comment_reacts cr WHERE cr.comment_id = c.comment_id AND cr.react = 1) AS like_count,
+        (SELECT COUNT(*) FROM comment_reacts cr WHERE cr.comment_id = c.comment_id AND cr.react = 0) AS dislike_count
     FROM comments c
     JOIN users u ON c.user_id = u.user_id
     WHERE c.doc_id=? AND c.parent_comment_id IS NOT NULL AND (SELECT parent_comment_id FROM comments WHERE comment_id=c.parent_comment_id) IS NULL
@@ -383,24 +391,44 @@ foreach ($all_replies as $r) {
 ?>
 
 <div class="container my-4">
+    <?php if ($has_access && $doc['status_id'] != 2): ?>
+        <div class="alert alert-warning border-warning">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <div>
+                    <strong>LƯU Ý:</strong>
+                    <span>
+                        Tài liệu này chưa được duyệt - chỉ người tải lên và quản trị viên mới có thể xem tài liệu này.
+                    </span>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+    
     <div class="d-flex justify-content-between align-items-center mb-2">
         <h2 class="mb-0"><?= htmlspecialchars($doc['title'] ?? '') ?></h2>
 
         <div class="mb-3 d-flex flex-column align-items-end" style="min-height:40px;">
             <div class="d-flex align-items-center flex-wrap gap-2" style="justify-content: flex-end;">
-                <strong class="me-2">Tags:</strong>
+                <strong class="me-2">Tag:</strong>
                 <?php if ($doc_tags): ?>
                     <div id="all-tags" class="d-flex flex-wrap gap-1 align-items-center">
                         <?php foreach ($doc_tags as $tag): ?>
                             <span class="badge tag-badge px-2 py-1 mb-1">#<?= htmlspecialchars($tag) ?>
-                                <a href="document_view.php?id=<?= $doc_id ?>&delete_tag=<?= urlencode($tag) ?>" class="text-danger ms-1" title="Xóa tag">&times;</a>
+                                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                                    <a href="document_view.php?id=<?= $doc_id ?>&delete_tag=<?= urlencode($tag) ?>" class="text-danger ms-1" title="Xóa tag">&times;</a>
+                                <?php endif; ?>
                             </span>
                         <?php endforeach; ?>
-                        <button id="add-tag-btn" class="btn btn-success btn-sm ms-2 px-2 py-1" style="font-size:1em;">+</button>
-                    </div>
+                        <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                            <button id="add-tag-btn" class="btn btn-success btn-sm ms-2 px-2 py-1" style="font-size:1em;">+</button>
+                        <?php endif; ?>
+                        </div>
                 <?php else: ?>
                     <span class="text-muted no-tag-text">Chưa có tag</span>
-                    <button id="add-tag-btn" class="btn btn-success btn-sm ms-2 px-2 py-1" style="font-size:1em;">+</button>
+                    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
+                        <button id="add-tag-btn" class="btn btn-success btn-sm ms-2 px-2 py-1" style="font-size:1em;">+</button>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
 
@@ -553,6 +581,12 @@ foreach ($all_replies as $r) {
         </div>
     </div>
     <p><strong>Mô tả:</strong> <?= nl2br(htmlspecialchars($doc['description'] ?? '')) ?></p>
+    <?php if (isset($doc['summary']) && $doc['summary'] !== null && trim($doc['summary']) !== ''): ?>
+    <details style="margin-bottom:10px">
+        <summary style="cursor:pointer;font-weight:bold;color:#007bff">Tóm tắt văn bản</summary>
+        <div style="padding:8px 0 0 16px;white-space:pre-line;"><?= nl2br(htmlspecialchars($doc['summary'])) ?></div>
+    </details>
+    <?php endif; ?>
     <p><strong>Đánh giá:</strong> <span id="review-summary-text"><?= $review_summary ?></span> (👍 <span id="like-count"><?= $doc['positive_count'] ?? 0 ?></span> | 👎 <span id="dislike-count"><?= $doc['negative_count'] ?? 0 ?></span>)</p>
     <p><strong>Lượt xem:</strong> <?= number_format($doc['views'] ?? 0) ?></p>
     <p><strong>Lượt tải:</strong> <?= $total_downloads ?></p>
@@ -565,8 +599,6 @@ foreach ($all_replies as $r) {
         <?php if (isset($_SESSION['user_id'])): ?>
             <button id="like-btn" class="btn btn-success me-2<?= ($user_review_type === 'positive' ? ' active' : '') ?>">👍 Thích</button>
             <button id="dislike-btn" class="btn btn-danger<?= ($user_review_type === 'negative' ? ' active' : '') ?>">👎 Không thích</button>
-        <?php else: ?>
-            <div class="alert alert-warning">⚠️ Bạn cần <a href="login.php">đăng nhập</a> để đánh giá tài liệu.</div>
         <?php endif; ?>
     </div>
     <script>
@@ -594,7 +626,7 @@ foreach ($all_replies as $r) {
             function sendReview(type, undo = false) {
                 let reviewType = type;
                 if (undo) reviewType = 'none';
-                fetch('review.php', {
+                fetch('action_doc_review.php', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded',
@@ -661,85 +693,35 @@ foreach ($all_replies as $r) {
     <?php if (isset($_SESSION['user_id'])): ?>
         <a href="download.php?id=<?= $doc['doc_id'] ?? 0 ?>" class="btn btn-primary mb-3">📥 Tải xuống</a>
     <?php else: ?>
-        <div class="alert alert-warning">⚠️ Bạn cần <a href="register.php">tạo tài khoản</a> hoặc <a href="login.php">đăng nhập</a> để tải tài liệu này.</div>
+        <div class="alert alert-warning">⚠️ Hãy <a href="login.php">đăng nhập</a> hoặc <a href="register.php">tạo tài khoản</a> để tải và tương tác trên tài liệu này.</div>
     <?php endif; ?>
 
     <hr>
 
 
     <?php if (isset($_SESSION['user_id'])): ?>
-        <?php if (isset($edit_comment) && $edit_comment && $edit_comment['user_id'] == $_SESSION['user_id']): ?>
-            <form method="post" class="mb-4">
-                <input type="hidden" name="doc_id" value="<?= $doc['doc_id'] ?>">
-                <textarea name="edit_content" class="form-control mb-2" rows="3" required><?= htmlspecialchars($edit_comment['content']) ?></textarea>
-                <button class="btn btn-warning">Cập nhật bình luận</button>
-                <a href="document_view.php?id=<?= $doc['doc_id'] ?>" class="btn btn-secondary">Hủy</a>
-            </form>
+        <?php if ($khoabinhluan): ?>
+            <div class="alert alert-warning mb-3">⚠️ Tài khoản của bạn đã bị khóa bình luận: bạn không thể gửi, sửa hoặc tương tác với bình luận.</div>
         <?php else: ?>
-            <form method="post" class="mb-4">
-                <input type="hidden" name="doc_id" value="<?= $doc['doc_id'] ?>">
-                <textarea name="comment_content" class="form-control mb-2" rows="3" placeholder="Viết bình luận..." required></textarea>
-                <button class="btn btn-success">Gửi bình luận</button>
-            </form>
+            <?php if (isset($edit_comment) && $edit_comment && $edit_comment['user_id'] == $_SESSION['user_id']): ?>
+                <form method="post" class="mb-4">
+                    <input type="hidden" name="doc_id" value="<?= htmlspecialchars($doc['doc_id']) ?>">
+                    <textarea name="edit_content" class="form-control mb-2" rows="3" required><?= htmlspecialchars($edit_comment['content']) ?></textarea>
+                    <button class="btn btn-warning">Cập nhật bình luận</button>
+                    <a href="document_view.php?id=<?= htmlspecialchars($doc['doc_id']) ?>" class="btn btn-secondary">Hủy</a>
+                </form>
+            <?php else: ?>
+                <form method="post" class="mb-4">
+                    <input type="hidden" name="doc_id" value="<?= htmlspecialchars($doc['doc_id']) ?>">
+                    <textarea name="comment_content" class="form-control mb-2" rows="3" placeholder="Viết bình luận..." required></textarea>
+                    <button class="btn btn-success">Gửi bình luận</button>
+                </form>
+            <?php endif; ?>
         <?php endif; ?>
-    <?php else: ?>
-        <div class="alert alert-warning">⚠️ Tạo tài khoản hoặc đăng nhập để bình luận.</div>
     <?php endif; ?>
 
-    <form method="get" class="row g-2 mb-3 align-items-end" id="comment-filter-form">
-        <input type="hidden" name="id" value="<?= $doc_id ?>">
-        <div class="col-auto">
-            <label for="comment_sort" class="form-label">Thời gian gửi</label>
-            <select name="comment_sort" id="comment_sort" class="form-select">
-                <option value="asc" <?= $comment_sort === 'ASC' ? 'selected' : '' ?>>Cũ nhất</option>
-                <option value="desc" <?= $comment_sort === 'DESC' ? 'selected' : '' ?>>Mới nhất</option>
-            </select>
-        </div>
-        <div class="col-auto">
-            <label for="like_sort" class="form-label">Số lượt thích</label>
-            <select name="like_sort" id="like_sort" class="form-select">
-                <option value="">--</option>
-                <option value="desc" <?= $like_sort === 'DESC' ? 'selected' : '' ?>>Nhiều nhất</option>
-                <option value="asc" <?= $like_sort === 'ASC' ? 'selected' : '' ?>>Ít nhất</option>
-            </select>
-        </div>
-        <div class="col-auto">
-            <label for="dislike_sort" class="form-label">Số lượt không thích</label>
-            <select name="dislike_sort" id="dislike_sort" class="form-select">
-                <option value="">--</option>
-                <option value="desc" <?= $dislike_sort === 'DESC' ? 'selected' : '' ?>>Nhiều nhất</option>
-                <option value="asc" <?= $dislike_sort === 'ASC' ? 'selected' : '' ?>>Ít nhất</option>
-            </select>
-        </div>
-        <div class="col-auto">
-            <label for="search_user" class="form-label">Tìm theo username</label>
-            <input type="text" name="search_user" id="search_user" class="form-control" value="<?= htmlspecialchars($search_user) ?>" placeholder="Nhập username...">
-        </div>
-        <div class="col-auto">
-            <button class="btn btn-primary" id="filter-btn" type="submit">Lọc</button>
-        </div>
-    </form>
-    <script>
-        document.getElementById('comment-filter-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const form = e.target;
-            const params = new URLSearchParams(new FormData(form)).toString();
-            fetch(window.location.pathname + '?' + params)
-                .then(res => res.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const newComments = doc.querySelector('.container.my-4.pt-5');
-                    const oldComments = document.querySelector('.container.my-4.pt-5');
-                    if (newComments && oldComments) {
-                        oldComments.innerHTML = newComments.innerHTML;
-                    }
-                });
-        });
-    </script>
-
     <!-- Hiển thị bình luận -->
-    <?php if (!$comments): ?>
+  <?php if (!$comments): ?>
         <div class="alert alert-info">Chưa có bình luận nào.</div>
     <?php else: ?>
         <?php
@@ -756,49 +738,36 @@ foreach ($all_replies as $r) {
         }
         ?>
         <?php foreach ($comments as $c): ?>
-            <div class="card mb-2 shadow-sm" id="comment-<?= $c['comment_id'] ?>">
+            <div class="card mb-2 shadow-sm" id="comment-<?= (int)$c['comment_id'] ?>">
                 <div class="card-body">
                     <strong><a href="profile.php?user=<?= urlencode($c['username']) ?>" class="text-decoration-none"><?= htmlspecialchars($c['username']) ?></a></strong>
                     <small class="comment-time">
                         <?= date("H:i", strtotime($c['created_at'])) ?> Ngày <?= date("d/m/Y", strtotime($c['created_at'])) ?> (<?= timeAgo($c['created_at']) ?>)
                         <?php if (!empty($c['edited_at'])): ?> <span class="text-warning ms-2">(Đã chỉnh sửa)</span> <?php endif; ?>
                     </small>
-                    <style>
-                        .comment-time {
-                            color: #007bff;
-                            background: transparent;
-                            font-weight: 500;
-                        }
 
-                        body.dark-mode .comment-time {
-                            color: #ffd700;
-                        }
-
-                        .reply-info {
-                            color: #28a745;
-                            font-size: 0.95em;
-                            margin-left: 8px;
-                        }
-                    </style>
                     <div class="comment-content-area">
                         <?php
                         $is_owner = isset($_SESSION['user_id']) && $_SESSION['user_id'] == $c['user_id'];
-                        if (isset($_GET['edit_comment']) && $_GET['edit_comment'] == $c['comment_id'] && $is_owner): ?>
+                        // Nếu người xem bị khóa bình luận thì không hiện form edit inline
+                        if (!$khoabinhluan && isset($_GET['edit_comment']) && $_GET['edit_comment'] == $c['comment_id'] && $is_owner): ?>
                             <form class="edit-comment-form" method="post" style="margin-bottom:0;">
-                                <input type="hidden" name="doc_id" value="<?= $doc['doc_id'] ?>">
+                                <input type="hidden" name="doc_id" value="<?= htmlspecialchars($doc['doc_id']) ?>">
                                 <textarea name="edit_content" class="form-control mb-2" rows="3" required><?= htmlspecialchars($c['content']) ?></textarea>
                                 <button class="btn btn-warning btn-sm">Cập nhật</button>
-                                <a href="document_view.php?id=<?= $doc['doc_id'] ?>" class="btn btn-secondary btn-sm">Hủy</a>
+                                <a href="document_view.php?id=<?= htmlspecialchars($doc['doc_id']) ?>" class="btn btn-secondary btn-sm">Hủy</a>
                             </form>
                         <?php else: ?>
                             <p><?= nl2br(htmlspecialchars($c['content'])) ?></p>
                         <?php endif; ?>
                     </div>
+
                     <div class="d-flex gap-2 align-items-center">
-                        <button class="btn btn-sm btn-outline-primary like-comment-btn" data-id="<?= $c['comment_id'] ?>">👍 <span class="like-count"><?= $c['like_count'] ?></span></button>
-                        <button class="btn btn-sm btn-outline-danger dislike-comment-btn" data-id="<?= $c['comment_id'] ?>">👎 <span class="dislike-count"><?= $c['dislike_count'] ?? 0 ?></span></button>
-                        <button class="btn btn-sm btn-outline-secondary reply-comment-btn" data-id="<?= $c['comment_id'] ?>">↩️ Phản hồi</button>
-                        <a href="report.php?reported_user=<?= urlencode($c['username']) ?>" class="btn btn-sm btn-outline-warning">🚩 Báo cáo</a>
+                        <?php $disabledAttr = $khongtuongtac ? 'disabled' : ''; ?>
+                        <button <?= $disabledAttr ?> class="btn btn-sm btn-outline-primary like-comment-btn" data-id="<?= (int)$c['comment_id'] ?>">👍 <span class="like-count"><?= (int)($c['like_count'] ?? 0) ?></span></button>
+                        <button <?= $disabledAttr ?> class="btn btn-sm btn-outline-danger dislike-comment-btn" data-id="<?= (int)$c['comment_id'] ?>">👎 <span class="dislike-count"><?= (int)($c['dislike_count'] ?? 0) ?></span></button>
+                        <button <?= $disabledAttr ?> class="btn btn-sm btn-outline-secondary reply-comment-btn" data-id="<?= (int)$c['comment_id'] ?>" <?= $khongtuongtac ? 'data-disabled="1"' : '' ?>>↩️ Phản hồi</button>
+
                         <?php
                         // Tìm reply mới nhất cho comment này
                         $latest_reply = null;
@@ -810,21 +779,26 @@ foreach ($all_replies as $r) {
                         if ($latest_reply): ?>
                             <span class="reply-info">Phản hồi mới nhất: <?= date("H:i", strtotime($latest_reply['created_at'])) ?> Ngày <?= date("d/m/Y", strtotime($latest_reply['created_at'])) ?> (<?= timeAgo($latest_reply['created_at']) ?>)</span>
                         <?php endif; ?>
-                        <?php if ($is_owner): ?>
-                            <a href="?edit_comment=<?= $c['comment_id'] ?>&id=<?= $doc['doc_id'] ?>#comment-<?= $c['comment_id'] ?>" class="btn btn-sm btn-warning">Sửa</a>
+
+                        <?php if (!$khongtuongtac && $is_owner): ?>
+                            <a href="?edit_comment=<?= (int)$c['comment_id'] ?>&id=<?= (int)$doc['doc_id'] ?>#comment-<?= (int)$c['comment_id'] ?>" class="btn btn-sm btn-warning">Sửa</a>
                         <?php endif; ?>
-                        <?php if ($is_owner || (isset($_SESSION['role']) && $_SESSION['role'] === 'admin')): ?>
-                            <a href="?delete_comment=<?= $c['comment_id'] ?>&id=<?= $doc['doc_id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Bạn chắc chắn muốn xóa bình luận này?');">Xóa</a>
+
+                        <?php if (!$khongtuongtac && ($is_owner || (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'))): ?>
+                            <a href="?delete_comment=<?= (int)$c['comment_id'] ?>&id=<?= (int)$doc['doc_id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Bạn chắc chắn muốn xóa bình luận này?');">Xóa</a>
                         <?php endif; ?>
                     </div>
-                    <div class="reply-box mt-2" id="reply-box-<?= $c['comment_id'] ?>" style="display:none;"></div>
+
+                    <div class="reply-box mt-2" id="reply-box-<?= (int)$c['comment_id'] ?>" style="display:none;"></div>
+
                     <?php $reply_count = !empty($replies_by_comment[$c['comment_id']]) ? count($replies_by_comment[$c['comment_id']]) : 0; ?>
                     <?php if ($reply_count > 0): ?>
-                        <button class="btn btn-link show-replies-btn p-0 ms-2" data-id="<?= $c['comment_id'] ?>">
+                        <button class="btn btn-link show-replies-btn p-0 ms-2" data-id="<?= (int)$c['comment_id'] ?>">
                             <?= $reply_count ?> Phản hồi
                         </button>
                     <?php endif; ?>
-                    <div class="replies-list ms-4 mt-2" id="replies-list-<?= $c['comment_id'] ?>" style="display:none;">
+
+                    <div class="replies-list ms-4 mt-2" id="replies-list-<?= (int)$c['comment_id'] ?>" style="display:none;">
                         <?php if ($reply_count > 0): ?>
                             <?php foreach ($replies_by_comment[$c['comment_id']] as $r): ?>
                                 <div class="card mb-1 border-info">
@@ -835,8 +809,14 @@ foreach ($all_replies as $r) {
                                             <?php if (!empty($r['edited_at'])): ?> <span class="text-warning ms-2">(Đã chỉnh sửa)</span> <?php endif; ?>
                                         </small>
                                         <p class="mb-1"><?= nl2br(htmlspecialchars($r['content'])) ?></p>
-                                        <button class="btn btn-sm btn-outline-primary like-comment-btn" data-id="<?= $r['comment_id'] ?>">👍 <span class="like-count"><?= $r['like_count'] ?></span></button>
-                                        <button class="btn btn-sm btn-outline-danger dislike-comment-btn" data-id="<?= $r['comment_id'] ?>">👎 <span class="dislike-count"><?= $r['dislike_count'] ?? 0 ?></span></button>
+                                        <button <?= $disabledAttr ?> class="btn btn-sm btn-outline-primary like-comment-btn" data-id="<?= (int)$r['comment_id'] ?>">👍 <span class="like-count"><?= (int)($r['like_count'] ?? 0) ?></span></button>
+                                        <button <?= $disabledAttr ?> class="btn btn-sm btn-outline-danger dislike-comment-btn" data-id="<?= (int)$r['comment_id'] ?>">👎 <span class="dislike-count"><?= (int)($r['dislike_count'] ?? 0) ?></span></button>
+                                        <?php if (!$khongtuongtac && $is_owner): ?>
+                                            <a href="?edit_comment=<?= (int)$c['comment_id'] ?>&id=<?= (int)$doc['doc_id'] ?>#comment-<?= (int)$c['comment_id'] ?>" class="btn btn-sm btn-warning">Sửa</a>
+                                        <?php endif; ?>
+                                        <?php if (!$khongtuongtac && ($is_owner || (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'))): ?>
+                                            <a href="?delete_comment=<?= (int)$c['comment_id'] ?>&id=<?= (int)$doc['doc_id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Bạn chắc chắn muốn xóa bình luận này?');">Xóa</a>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -959,7 +939,7 @@ foreach ($all_replies as $r) {
                 replyBox.querySelector('.reply-form').onsubmit = function(e) {
                     e.preventDefault();
                     const formData = new FormData(this);
-                    fetch('reply_comment.php', {
+                    fetch('action_reply_comment.php', {
                             method: 'POST',
                             body: formData
                         })
@@ -1000,7 +980,7 @@ foreach ($all_replies as $r) {
                     const commentCard = this.closest('.card');
                     const likeBtn = commentCard ? commentCard.querySelector('.like-comment-btn') : null;
                     const dislikeBtn = commentCard ? commentCard.querySelector('.dislike-comment-btn') : null;
-                    fetch('review_comment.php', {
+                    fetch('action_review_comment.php', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/x-www-form-urlencoded'

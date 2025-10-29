@@ -3,7 +3,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Lấy tiêu đề trang nếu được truyền vào
 $page_title = $page_title ?? "Code Viewer";
 ?>
 <!DOCTYPE html>
@@ -34,7 +33,4 @@ $page_title = $page_title ?? "Code Viewer";
 </head>
 
 <body>
-    <header>
-        <h1><?= htmlspecialchars($page_title) ?></h1>
-    </header>
     <main>

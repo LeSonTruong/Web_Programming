@@ -1,17 +1,15 @@
 <?php
-include 'includes/header.php';
-include 'includes/db.php';
+session_start();
+require_once "includes/db.php";
 
-// ====== KIỂM TRA ĐĂNG NHẬP ======
 if (!isset($_SESSION['user_id'])) {
-    echo '<div class="container my-5">
-            <div class="alert alert-warning text-center">
-                ⚠️ Tạo tài khoản hoặc đăng nhập đi bạn ÊYYYYY!
-            </div>
-          </div>';
-    include 'includes/footer.php';
+    http_response_code(403);
+    $reason = 'chuadangnhap';
+    include __DIR__ . '/!403.php';
     exit();
 }
+
+include 'includes/header.php';
 
 $user_id = $_SESSION['user_id'];
 $is_admin = $_SESSION['role'] === 'admin';
@@ -20,7 +18,7 @@ $is_admin = $_SESSION['role'] === 'admin';
 if ($is_admin) {
     // Admin thấy tất cả lượt tải
     $stmt = $conn->query("
-        SELECT dl.download_id, dl.download_time, u.fullname, u.username, d.title, d.file_path
+        SELECT dl.download_id, dl.download_time, u.display_name, u.username, d.title, d.file_path
         FROM downloads dl
         JOIN users u ON dl.user_id = u.user_id
         JOIN documents d ON dl.doc_id = d.doc_id
@@ -29,7 +27,7 @@ if ($is_admin) {
 } else {
     // User bình thường chỉ thấy lượt tải của họ
     $stmt = $conn->prepare("
-        SELECT dl.download_id, dl.download_time, u.fullname, u.username, d.title, d.file_path
+        SELECT dl.download_id, dl.download_time, u.display_name, u.username, d.title, d.file_path
         FROM downloads dl
         JOIN users u ON dl.user_id = u.user_id
         JOIN documents d ON dl.doc_id = d.doc_id
@@ -64,7 +62,7 @@ $downloads = $stmt->fetchAll();
                         <tr>
                             <td><?= $index + 1 ?></td>
                             <?php if ($is_admin): ?>
-                                <td><?= htmlspecialchars($dl['fullname'] ?? $dl['username']) ?></td>
+                                <td><?= htmlspecialchars($dl['display_name'] ?? $dl['username']) ?></td>
                             <?php endif; ?>
                             <td><?= htmlspecialchars($dl['title']) ?></td>
                             <td><?= date("d/m/Y H:i", strtotime($dl['download_time'])) ?></td>

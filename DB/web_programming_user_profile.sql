@@ -1,6 +1,6 @@
--- MySQL dump 10.13  Distrib 8.0.43, for Win64 (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.42, for Win64 (x86_64)
 --
--- Host: 127.0.0.1    Database: web_programming
+-- Host: localhost    Database: web_programming
 -- ------------------------------------------------------
 -- Server version	8.0.43
 
@@ -16,32 +16,35 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `reports`
+-- Table structure for table `user_profile`
 --
 
-DROP TABLE IF EXISTS `reports`;
+DROP TABLE IF EXISTS `user_profile`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `reports` (
-  `report_id` int NOT NULL AUTO_INCREMENT,
-  `reporter_id` int NOT NULL,
-  `reported_user` varchar(255) NOT NULL,
-  `reason` varchar(255) NOT NULL,
-  `behavior` varchar(255) NOT NULL,
-  `evidence` text,
-  `status` enum('pending','forgiven','warned','banned') DEFAULT 'pending',
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`report_id`)
+CREATE TABLE `user_profile` (
+  `user_id` int NOT NULL,
+  `birthday` date DEFAULT NULL,
+  `gender` tinyint(1) DEFAULT NULL,
+  `facebook` varchar(255) DEFAULT NULL,
+  `show_email` tinyint(1) DEFAULT '1',
+  `show_phone` tinyint(1) DEFAULT '1',
+  `show_birthday` tinyint(1) DEFAULT '1',
+  `show_gender` tinyint(1) DEFAULT '1',
+  `show_facebook` tinyint(1) DEFAULT '1',
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `user_profile_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `reports`
+-- Dumping data for table `user_profile`
 --
 
-LOCK TABLES `reports` WRITE;
-/*!40000 ALTER TABLE `reports` DISABLE KEYS */;
-/*!40000 ALTER TABLE `reports` ENABLE KEYS */;
+LOCK TABLES `user_profile` WRITE;
+/*!40000 ALTER TABLE `user_profile` DISABLE KEYS */;
+INSERT INTO `user_profile` VALUES (1,NULL,NULL,NULL,1,1,1,1,1),(2,NULL,NULL,NULL,1,1,1,1,1),(3,NULL,NULL,NULL,1,1,1,1,1),(4,NULL,NULL,NULL,1,1,1,1,1),(5,'2000-05-13',2,'',1,1,1,1,1);
+/*!40000 ALTER TABLE `user_profile` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -53,4 +56,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-27 10:38:44
+-- Dump completed on 2025-10-28  2:15:16

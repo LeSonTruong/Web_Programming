@@ -1,32 +1,50 @@
 <?php
-include 'includes/header.php';
 require_once "includes/db.php";
 
+session_start();
 
-// Nếu có user_id trên URL thì lấy user đó, nếu không thì lấy user đang đăng nhập
 if (!isset($_SESSION['user_id'])) {
-    echo '<div class="container my-5">
-            <div class="alert alert-warning text-center">
-                ⚠️ Vui lòng đăng nhập để xem trang cá nhân!
-            </div>
-          </div>';
-    include 'includes/footer.php';
+    http_response_code(403);
+    $reason = 'chuadangnhap';
+    include __DIR__ . '/!403.php';
     exit();
 }
 
+include 'includes/header.php';
+
 // Xác định kiểu truy vấn: user_id, username, hoặc chính mình
 
+// Select from users and left-join user_profile where profile fields were moved
+// Keep selecting all users.* fields and explicitly include profile columns
 if (isset($_GET['user_id'])) {
     $view_user_id = intval($_GET['user_id']);
-    $query = "SELECT * FROM users WHERE user_id=?";
+    $query = "SELECT users.*, 
+                     user_profile.show_email, user_profile.show_phone, user_profile.show_birthday, 
+                     user_profile.show_gender, user_profile.show_facebook, 
+                     user_profile.birthday, user_profile.gender, user_profile.facebook
+              FROM users
+              LEFT JOIN user_profile ON users.user_id = user_profile.user_id
+              WHERE users.user_id=?";
     $param = [$view_user_id];
 } elseif (isset($_GET['user'])) {
     $view_user_id = null; // sẽ lấy sau khi truy vấn
-    $query = "SELECT * FROM users WHERE username=?";
+    $query = "SELECT users.*, 
+                     user_profile.show_email, user_profile.show_phone, user_profile.show_birthday, 
+                     user_profile.show_gender, user_profile.show_facebook, 
+                     user_profile.birthday, user_profile.gender, user_profile.facebook
+              FROM users
+              LEFT JOIN user_profile ON users.user_id = user_profile.user_id
+              WHERE users.username=?";
     $param = [$_GET['user']];
 } else {
     $view_user_id = $_SESSION['user_id'];
-    $query = "SELECT * FROM users WHERE user_id=?";
+    $query = "SELECT users.*, 
+                     user_profile.show_email, user_profile.show_phone, user_profile.show_birthday, 
+                     user_profile.show_gender, user_profile.show_facebook, 
+                     user_profile.birthday, user_profile.gender, user_profile.facebook
+              FROM users
+              LEFT JOIN user_profile ON users.user_id = user_profile.user_id
+              WHERE users.user_id=?";
     $param = [$view_user_id];
 }
 
@@ -54,7 +72,6 @@ if ($user['user_id'] == $_SESSION['user_id']) {
     $_SESSION['avatar'] = $user['avatar'] ?? 'default.png';
     $_SESSION['display_name'] = $user['display_name'] ?? $user['username'];
 }
-
 ?>
 
 <div class="container py-4">
@@ -105,10 +122,8 @@ if ($user['user_id'] == $_SESSION['user_id']) {
                     <strong>Số điện thoại:</strong>
                     <?php if ($can_show_phone): ?>
                         <?= htmlspecialchars($user['phone'] ?: 'Chưa cập nhật') ?>
-                        <?php if (!empty($user['phone']) && empty($user['otp_code'])): ?>
+                        <?php if (!empty($user['phone'])): ?>
                             <span class="badge bg-success ms-2">Đã xác thực</span>
-                        <?php elseif (!empty($user['phone'])): ?>
-                            <span class="badge bg-warning ms-2">Chưa xác thực</span>
                         <?php endif; ?>
                     <?php else: ?>
                         <span class="text-muted">(Ẩn)</span>

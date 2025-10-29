@@ -19,11 +19,11 @@ $file       = $doc['file_path'];
 $ext        = strtolower(pathinfo($file, PATHINFO_EXTENSION));
 $title      = htmlspecialchars($doc['title']);
 $description = nl2br(htmlspecialchars($doc['description']));
-$file_url   = 'https://yourdomain.com/' . ltrim($file, '/'); // đổi sang domain thực tế
+$file_url   = 'https://studyshare.banhgao.net/' . ltrim($file, '/'); // đổi sang domain thực tế
 
 // Kiểm tra xem có bản convert PDF không
 $converted_pdf = 'uploads/converted/' . pathinfo($file, PATHINFO_FILENAME) . '.pdf';
-$converted_pdf_url = 'https://yourdomain.com/' . ltrim($converted_pdf, '/');
+$converted_pdf_url = 'https://studyshare.banhgao.net/' . ltrim($converted_pdf, '/');
 $has_converted_pdf = file_exists($converted_pdf);
 ?>
 

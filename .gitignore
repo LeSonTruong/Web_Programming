@@ -1,0 +1,40 @@
+# Environment variables
+.env
+
+# PHP Dependencies
+vendor/
+composer.phar
+
+# Python Dependencies & Virtual Environment  
+ai_service/venv/
+ai_service/__pycache__/
+*.pyc
+*.pyo
+
+# AI Models (Large files)
+ai_service/
+DocProcessCopy/
+
+# User uploaded files
+uploads/*
+!uploads/.gitkeep
+!uploads/avatars/default.png
+!uploads/thumbnails/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/

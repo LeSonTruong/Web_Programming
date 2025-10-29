@@ -27,10 +27,7 @@ if (!file_exists($full_path)) {
 $code_content = htmlspecialchars(file_get_contents($full_path));
 ?>
 
-<div class="container my-4">
-    <h3>📄 Xem code: <?= htmlspecialchars(basename($file)) ?></h3>
-    <pre><code class="language-<?= $ext ?>"><?= $code_content ?></code></pre>
-</div>
+<pre><code class="language-<?= $ext ?>"><?= $code_content ?></code></pre>
 
 <!-- Prism.js CSS & JS -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />

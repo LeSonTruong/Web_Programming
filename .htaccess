@@ -1,0 +1,20 @@
+## Front-controller .htaccess
+## Mục đích: Gửi tất cả các request (ngoại trừ file/thư mục tồn tại) vào index.php
+## để ứng dụng (index.php) xử lý routing và trả 404 khi cần.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Nếu yêu cầu trỏ tới tập tin hoặc thư mục thật sự tồn tại, giữ nguyên (không rewrite)
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Mọi URL khác sẽ được gửi nội bộ tới front.php (file front controller riêng)
+    RewriteRule ^ front.php [L,QSA]
+</IfModule>
+
+## Ghi chú:
+## - Hãy đảm bảo Apache bật mod_rewrite và VirtualHost cho phép AllowOverride All
+##   nếu bạn muốn dùng .htaccess này.
+## - Với cách này, index.php sẽ quyết định trả trang chủ, tài nguyên khác, hoặc 404.

@@ -19,17 +19,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password'])) {
-        $_SESSION['user_id'] = $user['user_id'];
-        $_SESSION['fullname'] = $user['fullname'];
-        $_SESSION['username'] = $user['username'];
-        $_SESSION['display_name'] = $user['display_name'] ?? $user['username'];
-        $_SESSION['avatar'] = $user['avatar'] ?? 'default.png';
-        $_SESSION['role'] = $user['role'];
+        // Kiểm tra tài khoản có bị banned không
+        if ($user['banned'] == 1) {
+            $error = "Tài khoản của bạn đã bị khóa.";
+        } else {
+            $_SESSION['user_id'] = $user['user_id'];
+            $_SESSION['display_name'] = $user['display_name'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['display_name'] = $user['display_name'] ?? $user['username'];
+            $_SESSION['avatar'] = $user['avatar'] ?? 'default.png';
+            $_SESSION['role'] = $user['role'];
 
-        header("Location: index.php");
-        exit();
+            header("Location: index.php");
+            exit();
+        }
     } else {
-        $error = "Tên đăng nhập/Email hoặc mật khẩu không đúng!";
+        $error = "Thông tin đăng nhập không chính xác!";
     }
 }
 
@@ -64,6 +69,9 @@ include 'includes/header.php';
 
         <p class="mt-3 text-center">
             Chưa có tài khoản? <a href="register.php">Đăng ký ngay</a>
+        </p>
+        <p class="text-center">
+            <a href="reset_password.php">Quên mật khẩu?</a>
         </p>
     </div>
 </div>
